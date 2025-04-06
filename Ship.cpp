@@ -328,3 +328,22 @@ void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector
         }
     }
 }
+
+// 根据网格大小和航迹步数计算难度级别
+int calculateDifficulty(int gridSize, int steps){
+    int difficulty = 1;
+    
+    if (gridSize <= 6 && steps <= 6) {
+        difficulty = 1; // 小网格，短航迹 - 简单
+    } else if (gridSize <= 8 && steps <= 8) {
+        difficulty = 2; // 中等网格，中等航迹 - 较简单
+    } else if (gridSize <= 8 && steps > 8) {
+        difficulty = 3; // 中等网格，长航迹 - 中等
+    } else if (gridSize > 8 && steps <= 8) {
+        difficulty = 4; // 大网格，中等航迹 - 较难
+    } else {
+        difficulty = 5; // 大网格，长航迹 - 困难
+    }
+    
+    return difficulty;
+}

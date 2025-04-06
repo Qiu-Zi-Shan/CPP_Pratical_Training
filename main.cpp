@@ -19,6 +19,10 @@ int main() {
     int steps = GRID_SIZE + rand() % (GRID_SIZE / 2);  // 根据网格大小，随机生成航迹步数
     cout << "航迹步数: " << steps << endl;
 
+    // 计算并显示难度级别
+    int difficulty = calculateDifficulty(GRID_SIZE, steps);
+    cout << "本次游戏难度级别: " << difficulty << "级 (1级最简单，5级最难)" << endl;
+
     // 随机选择游戏模式
     bool isMode1 = (rand() % 2 == 0);  // 随机选择模式1或模式2
     

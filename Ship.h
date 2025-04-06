@@ -53,3 +53,6 @@ bool processPlayerInput(const vector<TrajectoryPoint>& correctTrajectory, const 
 
 // 显示游戏结果
 void displayResult(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer);
+
+// 根据网格大小和航迹步数计算难度级别
+int calculateDifficulty(int gridSize, int steps);
