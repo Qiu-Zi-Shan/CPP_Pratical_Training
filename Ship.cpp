@@ -213,8 +213,8 @@ void generateShipTrajectory(Ship& ship, int steps){
     }
 }
 
-// 处理玩家输入并验证答案
-bool processPlayerInput(const vector<TrajectoryPoint>& correctTrajectory ,vector<TrajectoryPoint>& playerAnswer) {
+// 处理玩家输入并验证答案 - 模式1：由B的相对航迹推测B的实际航迹
+bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer) {
     // 获取玩家答案
     cout << "\n请输入B的实际航迹（格式：x1,y1 x2,y2 ...）：" << endl;
     string input;
@@ -247,8 +247,42 @@ bool processPlayerInput(const vector<TrajectoryPoint>& correctTrajectory ,vector
     return correct;
 }
 
-// 显示游戏结果
-void displayResult(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer) {
+// 处理玩家输入并验证答案 - 模式2：由B的实际航迹推测B的相对航迹
+bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer) {
+    // 获取玩家答案
+    cout << "\n请输入B的相对航迹（格式：x1,y1 x2,y2 ...）：" << endl;
+    string input;
+    getline(cin, input);
+
+    // 解析输入
+    stringstream ss(input);
+    string point;
+    while (ss >> point) {
+        size_t comma = point.find(',');
+        int x = stoi(point.substr(0, comma));
+        int y = stoi(point.substr(comma+1));
+        playerAnswer.emplace_back(x, y);
+    }
+
+    // 验证答案
+    bool correct = true;
+    if (playerAnswer.size() != correctRelativeTrajectory.size()) {
+        correct = false;
+    } 
+    else {
+        for (size_t i = 0; i < correctRelativeTrajectory.size(); i++) {
+            if (playerAnswer[i].x != correctRelativeTrajectory[i].x || 
+                playerAnswer[i].y != correctRelativeTrajectory[i].y) {
+                correct = false;
+                break;
+            }
+        }
+    }
+    return correct;
+}
+
+// 显示游戏结果 - 模式1：由B的相对航迹推测B的实际航迹
+void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer) {
     if (correct) {
         cout << "正确！B的实际航迹：" << endl;
         printTrajectory(B.trajectory, "B的实际");
@@ -267,6 +301,30 @@ void displayResult(bool correct, const Ship& A, const Ship& B, const vector<Traj
             cout << "\n您的答案图示:" << endl;
             // 显示玩家答案和A的实际轨迹
             printActualGrid(A.trajectory, playerAnswer);
+        }
+    }
+}
+
+// 显示游戏结果 - 模式2：由B的实际航迹推测B的相对航迹
+void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, const vector<TrajectoryPoint>& playerAnswer) {
+    if (correct) {
+        cout << "正确！B的相对航迹：" << endl;
+        printTrajectory(relativeB, "B的相对");
+        cout << "\n最终位置图示:" << endl;
+        // 显示A的实际轨迹和B的相对轨迹
+        printCombinedGrid(A.trajectory, relativeB);
+    } 
+    else {
+        cout << "错误！正确答案：" << endl;
+        printTrajectory(relativeB, "B的相对");
+        cout << "\n正确的最终位置图示:" << endl;
+        // 显示A的实际轨迹和B的相对轨迹
+        printCombinedGrid(A.trajectory, relativeB);
+        
+        if (!correct) {
+            cout << "\n您的答案图示:" << endl;
+            // 显示A的实际轨迹和玩家的答案
+            printCombinedGrid(A.trajectory, playerAnswer);
         }
     }
 }
