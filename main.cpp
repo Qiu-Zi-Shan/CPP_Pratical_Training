@@ -5,19 +5,27 @@
 #include<ctime>
 using namespace std;
 
+int GRID_SIZE;
+
 int main() {
     // 用当前时间作为随机数种子
     srand(static_cast<unsigned int>(time(0)));  
     
+    // 随机生成网格大小（范围：5-10）
+    GRID_SIZE = 5 + rand() % 6;
+
+    //移动步数
+    int steps = GRID_SIZE + rand() % (GRID_SIZE / 2);
+
     // 生成参照物A的实际轨迹
     auto[aX, aY] = randomStart();
     Ship A(aX, aY);
-    generateShipTrajectory(A, 2);  // 移动2步形成3个轨迹点
+    generateShipTrajectory(A, steps);  
 
     // 生成物体B的实际轨迹
     auto [bX, bY] = randomStart();
     Ship B(bX, bY);
-    generateShipTrajectory(B, 2);  // 移动2步形成3个轨迹点
+    generateShipTrajectory(B, steps); 
 
     // 计算B相对于A的轨迹
     vector<TrajectoryPoint> relativeB = calculateRelativePath(A.trajectory, B.trajectory);

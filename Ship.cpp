@@ -174,35 +174,42 @@ void generateShipTrajectory(Ship& ship, int steps){
     int dx[] = {0, 1, 0, -1};
     int dy[] = {-1, 0, 1, 0};
     
-    for (int i = 0; i < steps; i++) {    
+    int i = 0;  // 使用单独的计数器
+    while (i < steps) {    
         // 随机选择一个方向（0-3）
         int direction = rand() % 4;
 
-        // 检查移动后是否会超出边界，如果会超出边界，重新选择方向
+        // 检查移动后是否会超出边界
         TrajectoryPoint last = ship.trajectory.back();
         int newX = last.x + dx[direction];
         int newY = last.y + dy[direction];
-        if(newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) { continue; }
+        if(newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) { 
+            continue;  // 重新选择方向
+        }
 
         // 如果不是第一步，确保不会往回走
         if (i > 0) {
             TrajectoryPoint prev = ship.trajectory[ship.trajectory.size() - 2];
             TrajectoryPoint curr = ship.trajectory.back();
-            
+                
             // 计算上一步的方向
             int lastDx = curr.x - prev.x;
             int lastDy = curr.y - prev.y;
 
             // 如果选择了相反的方向，重新选择
-            if(dx[direction] == -lastDx && dy[direction] == -lastDy){ continue; }
+            if(dx[direction] == -lastDx && dy[direction] == -lastDy){ 
+                continue;
+            }
         }
-            
+                
         // 如果选择原地不动，重新选择
-        if(dx[direction] == 0 && dy[direction] == 0){ continue; }
+        if(dx[direction] == 0 && dy[direction] == 0){ 
+            continue;
+        }
 
         // 如果没有冲突，移动船只
         ship.move(dx[direction], dy[direction]);
-        break;
+        i++;  // 只有成功移动后才增加计数
     }
 }
 

@@ -3,7 +3,7 @@
 #include<string>
 using namespace std;
 
-const int GRID_SIZE = 5;  // 5x5的方格世界
+extern int GRID_SIZE;  // 方格世界大小
 
 #ifndef TRAJECTORYPOINT_H
 #define TRAJECTORYPOINT_H
