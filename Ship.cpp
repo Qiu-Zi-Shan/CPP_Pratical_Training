@@ -1,5 +1,8 @@
-#include<Ship.h>
+#include "Ship.h"
 #include<iostream>
+#include<vector>
+#include<cstdlib>
+#include<sstream> 
 using namespace std;
 
 // 初始化位置
@@ -163,4 +166,100 @@ void printActualGrid(const vector<TrajectoryPoint>& pathA, const vector<Trajecto
     }
     
     cout << "图例: A=船A的实际航迹, B=船B的实际航迹, *=A和B重叠, .=空格" << endl;
+}
+
+// 生成船只的随机移动轨迹
+void generateShipTrajectory(Ship& ship, int steps){
+    // 定义可能的移动方向：上、右、下、左
+    int dx[] = {0, 1, 0, -1};
+    int dy[] = {-1, 0, 1, 0};
+    
+    for (int i = 0; i < steps; i++) {    
+        // 随机选择一个方向（0-3）
+        int direction = rand() % 4;
+
+        // 检查移动后是否会超出边界，如果会超出边界，重新选择方向
+        TrajectoryPoint last = ship.trajectory.back();
+        int newX = last.x + dx[direction];
+        int newY = last.y + dy[direction];
+        if(newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) { continue; }
+
+        // 如果不是第一步，确保不会往回走
+        if (i > 0) {
+            TrajectoryPoint prev = ship.trajectory[ship.trajectory.size() - 2];
+            TrajectoryPoint curr = ship.trajectory.back();
+            
+            // 计算上一步的方向
+            int lastDx = curr.x - prev.x;
+            int lastDy = curr.y - prev.y;
+
+            // 如果选择了相反的方向，重新选择
+            if(dx[direction] == -lastDx && dy[direction] == -lastDy){ continue; }
+        }
+            
+        // 如果选择原地不动，重新选择
+        if(dx[direction] == 0 && dy[direction] == 0){ continue; }
+
+        // 如果没有冲突，移动船只
+        ship.move(dx[direction], dy[direction]);
+        break;
+    }
+}
+
+// 处理玩家输入并验证答案
+bool processPlayerInput(const vector<TrajectoryPoint>& correctTrajectory ,vector<TrajectoryPoint>& playerAnswer) {
+    // 获取玩家答案
+    cout << "\n请输入B的实际航迹（格式：x1,y1 x2,y2 ...）：" << endl;
+    string input;
+    getline(cin, input);
+
+    // 解析输入
+    stringstream ss(input);
+    string point;
+    while (ss >> point) {
+        size_t comma = point.find(',');
+        int x = stoi(point.substr(0, comma));
+        int y = stoi(point.substr(comma+1));
+        playerAnswer.emplace_back(x, y);
+    }
+
+    // 验证答案
+    bool correct = true;
+    if (playerAnswer.size() != correctTrajectory.size()) {
+        correct = false;
+    } 
+    else {
+        for (size_t i = 0; i < correctTrajectory.size(); i++) {
+            if (playerAnswer[i].x != correctTrajectory[i].x || 
+                playerAnswer[i].y != correctTrajectory[i].y) {
+                correct = false;
+                break;
+            }
+        }
+    }
+    return correct;
+}
+
+// 显示游戏结果
+void displayResult(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer) {
+    if (correct) {
+        cout << "正确！B的实际航迹：" << endl;
+        printTrajectory(B.trajectory, "B的实际");
+        cout << "\n最终位置图示:" << endl;
+        // 使用实际轨迹显示函数
+        printActualGrid(A.trajectory, B.trajectory);
+    } 
+    else {
+        cout << "错误！正确答案：" << endl;
+        printTrajectory(B.trajectory, "B的实际");
+        cout << "\n正确的最终位置图示:" << endl;
+        // 使用实际轨迹显示函数
+        printActualGrid(A.trajectory, B.trajectory);
+        
+        if (!correct) {
+            cout << "\n您的答案图示:" << endl;
+            // 显示玩家答案和A的实际轨迹
+            printActualGrid(A.trajectory, playerAnswer);
+        }
+    }
 }
