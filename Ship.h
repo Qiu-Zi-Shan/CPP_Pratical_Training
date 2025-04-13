@@ -3,6 +3,7 @@
 #include<string>
 using namespace std;
 
+// 游戏实现————————————————————
 extern int GRID_SIZE;  // 方格世界大小
 
 #ifndef TRAJECTORYPOINT_H
@@ -49,10 +50,60 @@ void printActualGrid(const vector<TrajectoryPoint>& pathA, const vector<Trajecto
 void generateShipTrajectory(Ship& ship, int steps);
 
 // 处理玩家输入并验证答案
-bool processPlayerInput(const vector<TrajectoryPoint>& correctTrajectory, const vector<TrajectoryPoint>& playerAnswer);
+bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer);
+bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer);
 
 // 显示游戏结果
-void displayResult(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer);
+void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer);
+void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, const vector<TrajectoryPoint>& playerAnswer);
 
-// 根据网格大小和航迹步数计算难度级别
+    // 根据网格大小和航迹步数计算难度级别
 int calculateDifficulty(int gridSize, int steps);
+
+//玩家类————————————————————————————————————————
+#ifndef PLAYER_H
+#define PLAYER_H
+
+class Player {
+private:
+    string username;
+    string password;
+    int score;
+
+public:
+    Player();
+    Player(const string& name, const string& pwd);
+    
+    // 获取用户名
+    string getUsername() const;
+    
+    // 验证密码
+    bool checkPassword(const string& pwd) const;
+    
+    // 获取积分
+    int getScore() const;
+    
+    // 设置积分
+    void setScore(int newScore);
+    
+    // 增加积分
+    void addScore(int points);
+    
+    // 减少积分
+    void reduceScore(int points);
+};
+#endif
+
+// 玩家管理相关函数声明——————————————————————————
+// 注册新玩家
+bool registerPlayer(const string& username, const string& password);
+
+// 玩家登录
+bool loginPlayer(const string& username, const string& password, Player& player);
+
+// 保存玩家数据
+void savePlayerData(const Player& player);
+
+// 显示积分排行榜
+void displayLeaderboard();
+int calculatePoints(int difficulty, bool correct);

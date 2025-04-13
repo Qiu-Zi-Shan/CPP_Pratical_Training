@@ -2,7 +2,9 @@
 #include<iostream>
 #include<vector>
 #include<cstdlib>
-#include<sstream> 
+#include<sstream>
+#include<fstream>  // Add this include for file operations
+#include<algorithm> // Add this for sort function
 using namespace std;
 
 // 初始化位置
@@ -346,4 +348,189 @@ int calculateDifficulty(int gridSize, int steps){
     }
     
     return difficulty;
+}
+
+// Player类的实现
+// 构造函数
+Player::Player() : score(0){}
+Player::Player(const string& name, const string& pwd) : username(name), password(pwd), score(0){}
+
+// 获取用户名
+string Player::getUsername() const{ return username; }
+
+// 验证密码
+bool Player::checkPassword(const string& pwd) const{ return password == pwd; }
+
+// 获取积分
+int Player::getScore() const{ return score; }
+
+// 设置分数
+void Player::setScore(int newScore){ score = newScore; }
+
+// 增加积分
+void Player::addScore(int points){ score += points; }
+
+// 减少积分
+void Player::reduceScore(int points){
+    if (score >= points) { score -= points; } 
+    else { score = 0; }
+}
+
+// 玩家管理相关函数声明——————————————————————————
+// 玩家数据文件路径
+const string PLAYER_DATA_FILE = "c:\\Cpl\\CPP_Pratical_Training\\player_data.txt";
+
+// 注册新玩家
+bool registerPlayer(const string& username, const string& password){
+    // 检查用户名是否已存在
+    ifstream inFile(PLAYER_DATA_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name, pwd;
+            int score;
+            ss >> name >> pwd >> score;
+            
+            if(name == username){
+                cout << "用户名已存在，请选择其他用户名。" << endl;
+                inFile.close();
+                return false;
+            }
+        }
+        inFile.close();
+    }
+    
+    // 添加新玩家到文件
+    ofstream outFile(PLAYER_DATA_FILE, ios::app);
+    if(outFile.is_open()){
+        outFile << username << " " << password << " 0" << endl;
+        outFile.close();
+        cout << "注册成功！" << endl;
+        return true;
+    } 
+    else{
+        cout << "无法打开玩家数据文件，注册失败。" << endl;
+        return false;
+    }
+}
+
+// 玩家登录
+bool loginPlayer(const string& username, const string& password, Player& player){
+    ifstream inFile(PLAYER_DATA_FILE);
+    bool userFound = false;
+    
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name, pwd;
+            int score;
+            ss >> name >> pwd >> score;
+            
+            if(name == username) {
+                userFound = true;
+                if(pwd == password){
+                    player = Player(username, password);
+                    player.setScore(score);
+                    cout << "登录成功！当前积分：" << score << endl << endl;
+                    return true;
+                } else {
+                    break; // 用户名找到但密码错误，停止搜索
+                }
+            }
+        }
+        inFile.close();
+        
+        if(userFound) {
+            cout << "密码错误。" << endl;
+        } else {
+            cout << "用户名不存在。" << endl;
+        }
+    } else {
+        cout << "无法打开玩家数据文件，登录失败。" << endl;
+    }
+    return false;
+}
+
+// 保存玩家数据
+void savePlayerData(const Player& player){
+    vector<string> lines;
+    ifstream inFile(PLAYER_DATA_FILE);
+    string line;
+    
+    if(inFile.is_open()) {
+        while (getline(inFile, line)) {
+            stringstream ss(line);
+            string name, pwd;
+            int score;
+            ss >> name >> pwd >> score;
+            if (name == player.getUsername()) {
+                line = name + " " + pwd + " " + to_string(player.getScore());
+            }
+            lines.push_back(line);
+        }
+        inFile.close();
+        
+        // 重新写入文件
+        ofstream outFile(PLAYER_DATA_FILE);
+        for (const auto& l : lines) {
+            outFile << l << endl;
+        }
+        outFile.close();
+    }
+    else {
+        cout << "无法打开玩家数据文件，数据保存失败" << endl;
+    }   
+}
+
+// 显示积分排行榜
+void displayLeaderboard() {
+    vector<pair<string, int>> players;
+    
+    ifstream inFile(PLAYER_DATA_FILE);
+    if (inFile.is_open()) {
+        string line;
+        while (getline(inFile, line)) {
+            stringstream ss(line);
+            string name, pwd;
+            int score;
+            ss >> name >> pwd >> score;
+            
+            players.push_back({name, score});
+        }
+        inFile.close();
+        
+        // 按分数降序排序
+        sort(players.begin(), players.end(), 
+             [](const pair<string, int>& a, const pair<string, int>& b) {
+                 return a.second > b.second;
+             });
+        
+        // 显示排行榜
+        cout << "\n===== 积分排行榜 =====" << endl;
+        cout << "排名\t用户名\t积分" << endl;
+        
+        for (size_t i = 0; i < players.size(); ++i) {
+            cout << i + 1 << "\t" << players[i].first << "\t" << players[i].second << endl;
+        }
+        
+        if (players.empty()) {
+            cout << "暂无玩家数据" << endl;
+        }
+    } else {
+        cout << "无法打开玩家数据文件，无法显示排行榜。" << endl;
+    }
+}
+
+// 根据难度计算得分或扣分
+int calculatePoints(int difficulty, bool correct) {
+    // 根据难度级别设置基础分数
+    double Points = difficulty;
+    
+    if (correct) {
+        return Points;  // 答对得到全部分数
+    } else {
+        return Points / 2;  // 答错扣除一半分数
+    }
 }
