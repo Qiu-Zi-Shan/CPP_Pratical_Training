@@ -156,10 +156,15 @@ int main() {
             cout << "恭喜！你获得了 " << points << " 分！" << endl;
             currentPlayer.addScore(points);
         } else {
-            if (currentPlayer.getScore() > 0) {
-                cout << "很遗憾，你失去了 " << points / 2 << " 分。" << endl;
-                currentPlayer.reduceScore(points / 2);
-            } else {
+            if (currentPlayer.getScore() > points) {
+                cout << "很遗憾，你失去了 " << points << " 分。" << endl;
+                currentPlayer.reduceScore(points);
+            }
+            else if (currentPlayer.getScore() > 0) {
+                cout << "很遗憾，你失去了 " << currentPlayer.getScore() << " 分。" << endl;
+                currentPlayer.setScore(0);
+            }
+            else {
                 cout << "很遗憾，答错了。但你的分数已经为0，不再扣分。" << endl;
             }
         }

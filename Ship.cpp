@@ -3,8 +3,9 @@
 #include<vector>
 #include<cstdlib>
 #include<sstream>
-#include<fstream>  // Add this include for file operations
-#include<algorithm> // Add this for sort function
+#include<fstream>
+#include<algorithm>
+#include<chrono> 
 using namespace std;
 
 // 初始化位置
@@ -217,10 +218,24 @@ void generateShipTrajectory(Ship& ship, int steps){
 
 // 处理玩家输入并验证答案 - 模式1：由B的相对航迹推测B的实际航迹
 bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer) {
+    // 开始计时
+    auto startTime = chrono::steady_clock::now();
+    
     // 获取玩家答案
     cout << "\n请输入B的实际航迹（格式：x1,y1 x2,y2 ...）：" << endl;
     string input;
     getline(cin, input);
+
+    // 结束计时并计算用时
+    auto endTime = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::seconds>(endTime - startTime);
+    cout << "\n您花费了 " << duration.count() << " 秒完成答题。" << endl;
+
+    // 检查作弊码
+    if (input == "999") {
+        playerAnswer = correctTrajectory;
+        return true;
+    }
 
     // 解析输入
     stringstream ss(input);
@@ -251,12 +266,26 @@ bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, v
 
 // 处理玩家输入并验证答案 - 模式2：由B的实际航迹推测B的相对航迹
 bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer) {
+    // 开始计时
+    auto startTime = chrono::steady_clock::now();
+    
     // 获取玩家答案
     cout << "\n请输入B的相对航迹（格式：x1,y1 x2,y2 ...）：" << endl;
     string input;
     getline(cin, input);
 
-    // 解析输入
+    // 结束计时并计算用时
+    auto endTime = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::seconds>(endTime - startTime);
+    cout << "\n您花费了 " << duration.count() << " 秒完成答题。" << endl;
+
+    // 检查作弊码
+    if (input == "999") {
+        playerAnswer = correctRelativeTrajectory;
+        return true;
+    }
+
+    // 原有的输入处理逻辑
     stringstream ss(input);
     string point;
     while (ss >> point) {
@@ -523,14 +552,14 @@ void displayLeaderboard() {
     }
 }
 
-// 根据难度计算得分或扣分
+// 根据难度计算得分
 int calculatePoints(int difficulty, bool correct) {
     // 根据难度级别设置基础分数
-    double Points = difficulty;
+    int Points = difficulty;
     
     if (correct) {
-        return Points;  // 答对得到全部分数
+        return Points * 2;  
     } else {
-        return Points / 2;  // 答错扣除一半分数
+        return Points;  
     }
 }
