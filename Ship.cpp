@@ -6,6 +6,7 @@
 #include<fstream>
 #include<algorithm>
 #include<chrono> 
+#include<iomanip>
 using namespace std;
 
 // 初始化位置
@@ -380,9 +381,10 @@ int calculateDifficulty(int gridSize, int steps){
 }
 
 // Player类的实现
-// 构造函数
-Player::Player() : score(0){}
-Player::Player(const string& name, const string& pwd) : username(name), password(pwd), score(0){}
+// Player类构造函数
+Player::Player() : score(0), totalGames(0), successGames(0) {}
+Player::Player(const string& name, const string& pwd) 
+    : username(name), password(pwd), score(0), totalGames(0), successGames(0) {}
 
 // 获取用户名
 string Player::getUsername() const{ return username; }
@@ -454,15 +456,19 @@ bool loginPlayer(const string& username, const string& password, Player& player)
         while(getline(inFile, line)){
             stringstream ss(line);
             string name, pwd;
-            int score;
-            ss >> name >> pwd >> score;
+            int score, total, success;
+            ss >> name >> pwd >> score >> total >> success;
             
             if(name == username) {
                 userFound = true;
                 if(pwd == password){
                     player = Player(username, password);
                     player.setScore(score);
-                    cout << "登录成功！当前积分：" << score << endl << endl;
+                    for(int i = 0; i < total; i++) {
+                        player.addGame(i < success);
+                    }
+                    cout << "登录成功！当前积分：" << score 
+                         << " 成功率：" << player.getSuccessRate() << "%" << endl << endl;
                     return true;
                 } else {
                     break; // 用户名找到但密码错误，停止搜索
@@ -482,6 +488,23 @@ bool loginPlayer(const string& username, const string& password, Player& player)
     return false;
 }
 
+// 玩家挑战成功次数
+void Player::addGame(bool success) {
+    totalGames++;
+    if (success) successGames++;
+}
+
+// 获取玩家总局数
+int Player::getTotalGames() const { return totalGames; }
+
+// 获取玩家挑战成功次数
+int Player::getSuccessGames() const { return successGames; }
+
+// 获取玩家挑战成功概率
+double Player::getSuccessRate() const {
+    return totalGames > 0 ? (double)successGames / totalGames * 100 : 0;
+}
+
 // 保存玩家数据
 void savePlayerData(const Player& player){
     vector<string> lines;
@@ -492,10 +515,12 @@ void savePlayerData(const Player& player){
         while (getline(inFile, line)) {
             stringstream ss(line);
             string name, pwd;
-            int score;
-            ss >> name >> pwd >> score;
+            int score, total, success;
+            ss >> name >> pwd >> score >> total >> success;
             if (name == player.getUsername()) {
-                line = name + " " + pwd + " " + to_string(player.getScore());
+                line = name + " " + pwd + " " + to_string(player.getScore()) + " " 
+                     + to_string(player.getTotalGames()) + " " 
+                     + to_string(player.getSuccessGames());
             }
             lines.push_back(line);
         }
@@ -515,7 +540,7 @@ void savePlayerData(const Player& player){
 
 // 显示积分排行榜
 void displayLeaderboard() {
-    vector<pair<string, int>> players;
+    vector<tuple<string, int, int, int>> players;  // 存储：用户名、分数、总次数、成功次数
     
     ifstream inFile(PLAYER_DATA_FILE);
     if (inFile.is_open()) {
@@ -523,25 +548,31 @@ void displayLeaderboard() {
         while (getline(inFile, line)) {
             stringstream ss(line);
             string name, pwd;
-            int score;
-            ss >> name >> pwd >> score;
+            int score, total, success;
+            ss >> name >> pwd >> score >> total >> success;
             
-            players.push_back({name, score});
+            players.push_back({name, score, total, success});
         }
         inFile.close();
         
         // 按分数降序排序
         sort(players.begin(), players.end(), 
-             [](const pair<string, int>& a, const pair<string, int>& b) {
-                 return a.second > b.second;
+             [](const auto& a, const auto& b) {
+                 return get<1>(a) > get<1>(b);
              });
         
         // 显示排行榜
         cout << "\n===== 积分排行榜 =====" << endl;
-        cout << "排名\t用户名\t积分" << endl;
+        cout << "排名\t用户名\t积分\t游戏次数\t成功率" << endl;
         
         for (size_t i = 0; i < players.size(); ++i) {
-            cout << i + 1 << "\t" << players[i].first << "\t" << players[i].second << endl;
+            const auto& [name, score, total, success] = players[i];
+            double rate = total > 0 ? (double)success / total * 100 : 0;
+            cout << i + 1 << "\t" 
+                 << name << "\t" 
+                 << score << "\t"
+                 << total << "\t\t"
+                 << fixed << setprecision(1) << rate << "%" << endl;
         }
         
         if (players.empty()) {

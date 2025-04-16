@@ -69,6 +69,8 @@ private:
     string username;
     string password;
     int score;
+    int totalGames;    
+    int successGames; 
 
 public:
     Player();
@@ -91,6 +93,11 @@ public:
     
     // 减少积分
     void reduceScore(int points);
+    
+    void addGame(bool success);
+    int getTotalGames() const;
+    int getSuccessGames() const;
+    double getSuccessRate() const;
 };
 #endif
 

@@ -150,12 +150,14 @@ int main() {
             displayResultMode2(correct, A, B, relativeB, playerAnswer);
         }
         
-        // 更新玩家积分
+        // 更新玩家积分和游戏记录
         int points = calculatePoints(difficulty, correct);
+        currentPlayer.addGame(correct);  // 添加这行
         if (correct) {
             cout << "恭喜！你获得了 " << points << " 分！" << endl;
             currentPlayer.addScore(points);
-        } else {
+        }
+        else {
             if (currentPlayer.getScore() > points) {
                 cout << "很遗憾，你失去了 " << points << " 分。" << endl;
                 currentPlayer.reduceScore(points);
