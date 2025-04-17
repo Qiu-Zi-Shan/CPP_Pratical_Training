@@ -52,12 +52,15 @@ void generateShipTrajectory(Ship& ship, int steps);
 // 处理玩家输入并验证答案
 bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer);
 bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer);
-
+bool processPlayerInputMode3(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer, bool isRelative);
 // 显示游戏结果
 void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer);
 void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, const vector<TrajectoryPoint>& playerAnswer);
 
-    // 根据网格大小和航迹步数计算难度级别
+// 显示游戏结果 - 模式3
+void displayResultMode3(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, const vector<TrajectoryPoint>& playerAnswer, bool isRelative);
+
+// 根据网格大小和航迹步数计算难度级别
 int calculateDifficulty(int gridSize, int steps);
 
 //玩家类————————————————————————————————————————

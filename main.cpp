@@ -5,6 +5,7 @@
 #include<ctime>
 #include<algorithm>
 #include<fstream>
+#include<chrono>
 using namespace std;
 
 int GRID_SIZE;
@@ -87,18 +88,22 @@ int main() {
     
         // 计算并显示难度级别
         int difficulty = calculateDifficulty(GRID_SIZE, steps);
-        cout << "本次游戏难度级别: " << difficulty << "级 (1级最简单，5级最难)" << endl;
+        cout << "本次游戏难度级别: " << difficulty << "级 (1级最简单)" << endl;
     
         // 随机选择游戏模式
-        bool isMode1 = (rand() % 2 == 0);  // 随机选择模式1或模式2
+        int modeChoice = rand() % 3;  // 0, 1, 2 三种模式
         
-        if (isMode1) {
+        if (modeChoice == 0) {
             cout << "游戏模式：由B的相对航迹推测B的实际航迹" << endl;
         } 
-        else {
+        else if (modeChoice == 1) {
             cout << "游戏模式：由B的实际航迹推测B的相对航迹" << endl;
         }
-    
+        else {
+            cout << "游戏模式：逐步推测B的航迹" << endl;
+            difficulty = difficulty + 2;  // 难度上升两级
+        }
+
         // 生成参照物A的实际轨迹
         auto[aX, aY] = randomStart();
         Ship A(aX, aY);
@@ -116,40 +121,96 @@ int main() {
         cout << "===== 脑力航迹游戏 =====" << endl;
         
         bool correct = false;
+        vector<TrajectoryPoint> playerAnswer;
         
-        if (isMode1) {
+        if (modeChoice == 0) {
             // 模式1：显示A的实际轨迹和B的相对轨迹
             printTrajectory(A.trajectory, "船A的实际");
             printTrajectory(relativeB, "船B的相对");
             
-            // 添加可视化显示
             cout << "\n参照物A的实际位置和物体B的相对航迹:" << endl;
             printCombinedGrid(A.trajectory, relativeB);
             
-            // 处理玩家输入并验证答案
-            vector<TrajectoryPoint> playerAnswer;
             correct = processPlayerInputMode1(B.trajectory, playerAnswer);
-    
-            // 显示结果
             displayResultMode1(correct, A, B, playerAnswer);
         } 
-        else {
+        else if (modeChoice == 1) {
             // 模式2：显示A的实际轨迹和B的实际轨迹
             printTrajectory(A.trajectory, "船A的实际");
             printTrajectory(B.trajectory, "船B的实际");
             
-            // 添加可视化显示
             cout << "\n参照物A和物体B的实际位置:" << endl;
             printActualGrid(A.trajectory, B.trajectory);
             
-            // 处理玩家输入并验证答案
-            vector<TrajectoryPoint> playerAnswer;
             correct = processPlayerInputMode2(relativeB, playerAnswer);
-    
-            // 显示结果
             displayResultMode2(correct, A, B, relativeB, playerAnswer);
         }
-        
+        else {
+            // 模式3：逐步显示和验证
+            vector<TrajectoryPoint> playerAnswer;
+            correct = true;
+            
+            // 开始计时
+            auto startTime = chrono::steady_clock::now();
+
+            for (size_t step = 0; step < A.trajectory.size() && correct; ++step) {
+                // 随机决定这一步是猜实际航迹还是相对航迹
+                bool isRelative = rand() % 2;
+                
+                // 显示A的当前轨迹
+                vector<TrajectoryPoint> currentA(A.trajectory.begin(), A.trajectory.begin() + step + 1);
+                printTrajectory(currentA, "船A的实际");
+                
+                // 准备当前步骤的轨迹
+                vector<TrajectoryPoint> currentB(B.trajectory.begin(), B.trajectory.begin() + step + 1);
+                vector<TrajectoryPoint> currentRelativeB(relativeB.begin(), relativeB.begin() + step + 1);
+                
+                if (!isRelative) {
+                    // 如果要猜B的实际航迹，显示完整的相对航迹，但实际航迹少显示一步
+                    printTrajectory(currentRelativeB, "船B的相对");
+                    if (step > 0) {
+                        vector<TrajectoryPoint> prevB(B.trajectory.begin(), B.trajectory.begin() + step);
+                        printTrajectory(prevB, "船B的实际");
+                    }
+                    cout << "\n参照物A的实际位置和物体B的相对航迹:" << endl;
+                    printCombinedGrid(currentA, currentRelativeB);
+                } else {
+                    // 如果要猜B的相对航迹，显示完整的实际航迹，但相对航迹少显示一步
+                    printTrajectory(currentB, "船B的实际");
+                    if (step > 0) {
+                        vector<TrajectoryPoint> prevRelativeB(relativeB.begin(), relativeB.begin() + step);
+                        printTrajectory(prevRelativeB, "船B的相对");
+                    }
+                    cout << "\n参照物A的实际位置和物体B的实际航迹:" << endl;
+                    printActualGrid(currentA, currentB);
+                }
+
+                // 处理玩家输入
+                if (!isRelative) {
+                    // 如果要猜B的实际航迹，需要与B的实际航迹比较
+                    correct = processPlayerInputMode3(B.trajectory, playerAnswer, isRelative);
+                } else {
+                    // 如果要猜B的相对航迹，需要与B的相对航迹比较
+                    correct = processPlayerInputMode3(relativeB, playerAnswer, isRelative);
+                }
+
+                // 显示当前步骤结果
+                displayResultMode3(correct, A, B, relativeB, playerAnswer, isRelative);
+
+                // 切换下一步是显示相对还是实际航迹
+                isRelative = !isRelative;
+            }
+            
+            // 结束计时并显示总用时
+            auto endTime = chrono::steady_clock::now();
+            auto duration = chrono::duration_cast<chrono::seconds>(endTime - startTime);
+            if (correct) {
+                cout << "\n恭喜完成挑战！总用时：" << duration.count() << " 秒。" << endl;
+            } else {
+                cout << "\n挑战失败。本次用时：" << duration.count() << " 秒。" << endl;
+            }
+        }
+
         // 更新玩家积分和游戏记录
         int points = calculatePoints(difficulty, correct);
         currentPlayer.addGame(correct);  // 添加这行

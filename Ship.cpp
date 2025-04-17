@@ -313,6 +313,26 @@ bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTraje
     return correct;
 }
 
+// 处理玩家输入并验证答案 - 模式3：逐步推测B的航迹
+bool processPlayerInputMode3(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer, bool isRelative) {
+    cout << "\n请输入B的" << (isRelative ? "相对" : "实际") << "航迹下一步（格式：x,y）：" << endl;
+    string input;
+    getline(cin, input);
+
+    if (input == "999") {
+        playerAnswer.push_back(correctTrajectory.back());
+        return true;
+    }
+
+    size_t comma = input.find(',');
+    int x = stoi(input.substr(0, comma));
+    int y = stoi(input.substr(comma+1));
+    playerAnswer.push_back(TrajectoryPoint(x, y));
+    
+    return (playerAnswer.back().x == correctTrajectory[playerAnswer.size()-1].x && 
+            playerAnswer.back().y == correctTrajectory[playerAnswer.size()-1].y);
+}
+
 // 显示游戏结果 - 模式1：由B的相对航迹推测B的实际航迹
 void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer) {
     if (correct) {
@@ -358,6 +378,17 @@ void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector
             // 显示A的实际轨迹和玩家的答案
             printCombinedGrid(A.trajectory, playerAnswer);
         }
+    }
+}
+
+// 显示游戏结果 - 模式3：逐步推测B的航迹
+void displayResultMode3(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, 
+                       const vector<TrajectoryPoint>& playerAnswer, bool isRelative) {
+    if (correct) {
+        cout << "正确！继续下一步。" << endl;
+    } else {
+        cout << "错误！正确的" << (isRelative ? "相对" : "实际") << "位置应该是：" 
+             << B.trajectory.back().x << "," << B.trajectory.back().y << endl;
     }
 }
 
@@ -540,7 +571,7 @@ void savePlayerData(const Player& player){
 
 // 显示积分排行榜
 void displayLeaderboard() {
-    vector<tuple<string, int, int, int>> players;  // 存储：用户名、分数、总次数、成功次数
+    vector<tuple<string, int, double>> players;
     
     ifstream inFile(PLAYER_DATA_FILE);
     if (inFile.is_open()) {
@@ -551,7 +582,8 @@ void displayLeaderboard() {
             int score, total, success;
             ss >> name >> pwd >> score >> total >> success;
             
-            players.push_back({name, score, total, success});
+            double rate = total > 0 ? (double)success / total * 100 : 0;
+            players.push_back({name, score, rate});
         }
         inFile.close();
         
@@ -561,18 +593,14 @@ void displayLeaderboard() {
                  return get<1>(a) > get<1>(b);
              });
         
-        // 显示排行榜
         cout << "\n===== 积分排行榜 =====" << endl;
-        cout << "排名\t用户名\t积分\t游戏次数\t成功率" << endl;
+        cout << "排名\t用户名\t积分\t成功率" << endl;
         
         for (size_t i = 0; i < players.size(); ++i) {
-            const auto& [name, score, total, success] = players[i];
-            double rate = total > 0 ? (double)success / total * 100 : 0;
             cout << i + 1 << "\t" 
-                 << name << "\t" 
-                 << score << "\t"
-                 << total << "\t\t"
-                 << fixed << setprecision(1) << rate << "%" << endl;
+                 << get<0>(players[i]) << "\t" 
+                 << get<1>(players[i]) << "\t"
+                 << fixed << setprecision(1) << get<2>(players[i]) << "%" << endl;
         }
         
         if (players.empty()) {
