@@ -45,14 +45,14 @@ vector<TrajectoryPoint> calculateRelativePath(const vector<TrajectoryPoint>& bas
      int currentX = target[0].x;
      int currentY = target[0].y;
         
-    for (size_t i = 1; i < target.size(); i++) {
+    for(size_t i = 1; i < target.size(); i++){
         // B的实际位移
         int bDx = target[i].x - target[i-1].x;
         int bDy = target[i].y - target[i-1].y;
             
-        // A的实际位移（如果A和B的轨迹长度不同，需要处理边界情况）
-        int aDx = (i < base.size()) ? (base[i].x - base[i-1].x) : 0;
-        int aDy = (i < base.size()) ? (base[i].y - base[i-1].y) : 0;
+        // A的实际位移
+        int aDx = base[i].x - base[i-1].x;
+        int aDy = base[i].y - base[i-1].y;
             
         // 从A的视角看，B的相对位移 = B的实际位移 - A的实际位移
         int relDx = bDx - aDx;
@@ -72,31 +72,31 @@ void printCombinedGrid(const vector<TrajectoryPoint>& pathA, const vector<Trajec
     char grid[GRID_SIZE][GRID_SIZE];
     
     // 初始化网格
-    for (int y = 0; y < GRID_SIZE; y++) {
-        for (int x = 0; x < GRID_SIZE; x++) {
+    for(int y = 0; y < GRID_SIZE; y++){
+        for(int x = 0; x < GRID_SIZE; x++){
             grid[y][x] = '.';
         }
     }
     
     // 标记A的轨迹
-    for (int i = 0; i < pathA.size(); i++) {
+    for(int i = 0; i < pathA.size(); i++){
         int x = pathA[i].x;
         int y = pathA[i].y;
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE){
             grid[y][x] = 'A';
         }
     }
     
     // 标记B的相对轨迹
-    for (int i = 0; i < relativePathB.size(); i++) {
+    for(int i = 0; i < relativePathB.size(); i++){
         int x = relativePathB[i].x;
         int y = relativePathB[i].y;
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        if(x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE){
             // 如果与A重叠，用'*'表示
-            if (grid[y][x] == 'A') {
+            if(grid[y][x] == 'A'){
                 grid[y][x] = '*';
             } 
-            else {
+            else{
                 grid[y][x] = 'R'; // R表示相对轨迹
             }
         }
@@ -125,30 +125,31 @@ void printActualGrid(const vector<TrajectoryPoint>& pathA, const vector<Trajecto
     char grid[GRID_SIZE][GRID_SIZE];
     
     // 初始化网格
-    for (int y = 0; y < GRID_SIZE; y++) {
-        for (int x = 0; x < GRID_SIZE; x++) {
+    for(int y = 0; y < GRID_SIZE; y++){
+        for (int x = 0; x < GRID_SIZE; x++){
             grid[y][x] = '.';
         }
     }
     
     // 标记A的轨迹
-    for (size_t i = 0; i < pathA.size(); i++) {
+    for(size_t i = 0; i < pathA.size(); i++){
         int x = pathA[i].x;
         int y = pathA[i].y;
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        if(x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE){
             grid[y][x] = 'A';
         }
     }
     
     // 标记B的实际轨迹
-    for (size_t i = 0; i < pathB.size(); i++) {
+    for(size_t i = 0; i < pathB.size(); i++){
         int x = pathB[i].x;
         int y = pathB[i].y;
-        if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        if(x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE){
             // 如果与A重叠，用'*'表示
-            if (grid[y][x] == 'A') {
+            if(grid[y][x] == 'A'){
                 grid[y][x] = '*';
-            } else {
+            } 
+            else{
                 grid[y][x] = 'B'; // B表示B的实际轨迹
             }
         }
@@ -156,14 +157,14 @@ void printActualGrid(const vector<TrajectoryPoint>& pathA, const vector<Trajecto
     
     // 打印网格
     cout << "  ";
-    for (int x = 0; x < GRID_SIZE; x++) {
+    for(int x = 0; x < GRID_SIZE; x++){
         cout << x << " ";
     }
     cout << endl;
     
-    for (int y = 0; y < GRID_SIZE; y++) {
+    for(int y = 0; y < GRID_SIZE; y++){
         cout << y << " ";
-        for (int x = 0; x < GRID_SIZE; x++) {
+        for(int x = 0; x < GRID_SIZE; x++){
             cout << grid[y][x] << " ";
         }
         cout << endl;
@@ -178,8 +179,8 @@ void generateShipTrajectory(Ship& ship, int steps){
     int dx[] = {0, 1, 0, -1};
     int dy[] = {-1, 0, 1, 0};
     
-    int i = 0;  // 使用单独的计数器
-    while (i < steps) {    
+    int i = 0;  
+    while(i < steps){    
         // 随机选择一个方向（0-3）
         int direction = rand() % 4;
 
@@ -192,7 +193,7 @@ void generateShipTrajectory(Ship& ship, int steps){
         }
 
         // 如果不是第一步，确保不会往回走
-        if (i > 0) {
+        if(i > 0){
             TrajectoryPoint prev = ship.trajectory[ship.trajectory.size() - 2];
             TrajectoryPoint curr = ship.trajectory.back();
                 
@@ -218,7 +219,7 @@ void generateShipTrajectory(Ship& ship, int steps){
 }
 
 // 处理玩家输入并验证答案 - 模式1：由B的相对航迹推测B的实际航迹
-bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer) {
+bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer){
     // 开始计时
     auto startTime = chrono::steady_clock::now();
     
@@ -233,7 +234,7 @@ bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, v
     cout << "\n您花费了 " << duration.count() << " 秒完成答题。" << endl;
 
     // 检查作弊码
-    if (input == "999") {
+    if(input == "999"){
         playerAnswer = correctTrajectory;
         return true;
     }
@@ -241,7 +242,7 @@ bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, v
     // 解析输入
     stringstream ss(input);
     string point;
-    while (ss >> point) {
+    while(ss >> point){
         size_t comma = point.find(',');
         int x = stoi(point.substr(0, comma));
         int y = stoi(point.substr(comma+1));
@@ -253,10 +254,9 @@ bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, v
     if (playerAnswer.size() != correctTrajectory.size()) {
         correct = false;
     } 
-    else {
-        for (size_t i = 0; i < correctTrajectory.size(); i++) {
-            if (playerAnswer[i].x != correctTrajectory[i].x || 
-                playerAnswer[i].y != correctTrajectory[i].y) {
+    else{
+        for(size_t i = 0; i < correctTrajectory.size(); i++) {
+            if(playerAnswer[i].x != correctTrajectory[i].x || playerAnswer[i].y != correctTrajectory[i].y){
                 correct = false;
                 break;
             }
@@ -266,7 +266,7 @@ bool processPlayerInputMode1(const vector<TrajectoryPoint>& correctTrajectory, v
 }
 
 // 处理玩家输入并验证答案 - 模式2：由B的实际航迹推测B的相对航迹
-bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer) {
+bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTrajectory, vector<TrajectoryPoint>& playerAnswer){
     // 开始计时
     auto startTime = chrono::steady_clock::now();
     
@@ -281,7 +281,7 @@ bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTraje
     cout << "\n您花费了 " << duration.count() << " 秒完成答题。" << endl;
 
     // 检查作弊码
-    if (input == "999") {
+    if(input == "999"){
         playerAnswer = correctRelativeTrajectory;
         return true;
     }
@@ -289,7 +289,7 @@ bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTraje
     // 原有的输入处理逻辑
     stringstream ss(input);
     string point;
-    while (ss >> point) {
+    while(ss >> point){
         size_t comma = point.find(',');
         int x = stoi(point.substr(0, comma));
         int y = stoi(point.substr(comma+1));
@@ -298,13 +298,12 @@ bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTraje
 
     // 验证答案
     bool correct = true;
-    if (playerAnswer.size() != correctRelativeTrajectory.size()) {
+    if(playerAnswer.size() != correctRelativeTrajectory.size()){
         correct = false;
     } 
-    else {
-        for (size_t i = 0; i < correctRelativeTrajectory.size(); i++) {
-            if (playerAnswer[i].x != correctRelativeTrajectory[i].x || 
-                playerAnswer[i].y != correctRelativeTrajectory[i].y) {
+    else{
+        for(size_t i = 0; i < correctRelativeTrajectory.size(); i++){
+            if(playerAnswer[i].x != correctRelativeTrajectory[i].x || playerAnswer[i].y != correctRelativeTrajectory[i].y){
                 correct = false;
                 break;
             }
@@ -314,7 +313,7 @@ bool processPlayerInputMode2(const vector<TrajectoryPoint>& correctRelativeTraje
 }
 
 // 处理玩家输入并验证答案 - 模式3：逐步推测B的航迹
-bool processPlayerInputMode3(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer, bool isRelative) {
+bool processPlayerInputMode3(const vector<TrajectoryPoint>& correctTrajectory, vector<TrajectoryPoint>& playerAnswer, bool isRelative){
     cout << "\n请输入B的" << (isRelative ? "相对" : "实际") << "航迹下一步（格式：x,y）：" << endl;
     string input;
     getline(cin, input);
@@ -335,21 +334,21 @@ bool processPlayerInputMode3(const vector<TrajectoryPoint>& correctTrajectory, v
 
 // 显示游戏结果 - 模式1：由B的相对航迹推测B的实际航迹
 void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& playerAnswer) {
-    if (correct) {
+    if(correct){
         cout << "正确！B的实际航迹：" << endl;
         printTrajectory(B.trajectory, "B的实际");
         cout << "\n最终位置图示:" << endl;
         // 使用实际轨迹显示函数
         printActualGrid(A.trajectory, B.trajectory);
     } 
-    else {
+    else{
         cout << "错误！正确答案：" << endl;
         printTrajectory(B.trajectory, "B的实际");
         cout << "\n正确的最终位置图示:" << endl;
         // 使用实际轨迹显示函数
         printActualGrid(A.trajectory, B.trajectory);
         
-        if (!correct) {
+        if(!correct){
             cout << "\n您的答案图示:" << endl;
             // 显示玩家答案和A的实际轨迹
             printActualGrid(A.trajectory, playerAnswer);
@@ -359,21 +358,21 @@ void displayResultMode1(bool correct, const Ship& A, const Ship& B, const vector
 
 // 显示游戏结果 - 模式2：由B的实际航迹推测B的相对航迹
 void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, const vector<TrajectoryPoint>& playerAnswer) {
-    if (correct) {
+    if(correct){
         cout << "正确！B的相对航迹：" << endl;
         printTrajectory(relativeB, "B的相对");
         cout << "\n最终位置图示:" << endl;
         // 显示A的实际轨迹和B的相对轨迹
         printCombinedGrid(A.trajectory, relativeB);
     } 
-    else {
+    else{
         cout << "错误！正确答案：" << endl;
         printTrajectory(relativeB, "B的相对");
         cout << "\n正确的最终位置图示:" << endl;
         // 显示A的实际轨迹和B的相对轨迹
         printCombinedGrid(A.trajectory, relativeB);
         
-        if (!correct) {
+        if(!correct){
             cout << "\n您的答案图示:" << endl;
             // 显示A的实际轨迹和玩家的答案
             printCombinedGrid(A.trajectory, playerAnswer);
@@ -384,11 +383,13 @@ void displayResultMode2(bool correct, const Ship& A, const Ship& B, const vector
 // 显示游戏结果 - 模式3：逐步推测B的航迹
 void displayResultMode3(bool correct, const Ship& A, const Ship& B, const vector<TrajectoryPoint>& relativeB, 
                        const vector<TrajectoryPoint>& playerAnswer, bool isRelative) {
-    if (correct) {
+    if(correct){
         cout << "正确！继续下一步。" << endl;
-    } else {
-        cout << "错误！正确的" << (isRelative ? "相对" : "实际") << "位置应该是：" 
-             << B.trajectory.back().x << "," << B.trajectory.back().y << endl;
+    } 
+    else{
+        cout << "错误！正确的" << (isRelative ? "相对" : "实际") << "位置应该是：" ;
+        if(isRelative) cout << relativeB.back().x << "," << relativeB.back().y << endl;    
+        else if(!isRelative) cout << B.trajectory.back().x << "," << B.trajectory.back().y << endl;
     }
 }
 
@@ -396,22 +397,15 @@ void displayResultMode3(bool correct, const Ship& A, const Ship& B, const vector
 int calculateDifficulty(int gridSize, int steps){
     int difficulty = 1;
     
-    if (gridSize <= 6 && steps <= 6) {
-        difficulty = 1; // 小网格，短航迹 - 简单
-    } else if (gridSize <= 8 && steps <= 8) {
-        difficulty = 2; // 中等网格，中等航迹 - 较简单
-    } else if (gridSize <= 8 && steps > 8) {
-        difficulty = 3; // 中等网格，长航迹 - 中等
-    } else if (gridSize > 8 && steps <= 8) {
-        difficulty = 4; // 大网格，中等航迹 - 较难
-    } else {
-        difficulty = 5; // 大网格，长航迹 - 困难
-    }
-    
+    if(steps <= 6){ difficulty = 1; } 
+    else if (steps <= 8){ difficulty = 2; } 
+    else if (steps <= 10){ difficulty = 3; } 
+    else if (steps <= 12){ difficulty = 4; }
+    else{ difficulty = 5; }
     return difficulty;
 }
 
-// Player类的实现
+// Player类的实现————————————————————————————
 // Player类构造函数
 Player::Player() : score(0), totalGames(0), successGames(0) {}
 Player::Player(const string& name, const string& pwd) 
@@ -438,7 +432,7 @@ void Player::reduceScore(int points){
     else { score = 0; }
 }
 
-// 玩家管理相关函数声明——————————————————————————
+// 玩家管理相关函数声明————————————————————————————————
 // 玩家数据文件路径
 const string PLAYER_DATA_FILE = "c:\\Cpl\\CPP_Pratical_Training\\player_data.txt";
 
@@ -490,18 +484,20 @@ bool loginPlayer(const string& username, const string& password, Player& player)
             int score, total, success;
             ss >> name >> pwd >> score >> total >> success;
             
-            if(name == username) {
+            if(name == username){
                 userFound = true;
                 if(pwd == password){
-                    player = Player(username, password);
+                    player = Player(username, password); // 创建一个新的Player对象表示当前玩家
                     player.setScore(score);
-                    for(int i = 0; i < total; i++) {
+                    // 初始化当前玩家数据
+                    for(int i = 0; i < total; i++){
                         player.addGame(i < success);
                     }
                     cout << "登录成功！当前积分：" << score 
                          << " 成功率：" << player.getSuccessRate() << "%" << endl << endl;
                     return true;
-                } else {
+                } 
+                else {
                     break; // 用户名找到但密码错误，停止搜索
                 }
             }
@@ -510,29 +506,31 @@ bool loginPlayer(const string& username, const string& password, Player& player)
         
         if(userFound) {
             cout << "密码错误。" << endl;
-        } else {
+        } 
+        else {
             cout << "用户名不存在。" << endl;
         }
-    } else {
+    } 
+    else {
         cout << "无法打开玩家数据文件，登录失败。" << endl;
     }
     return false;
 }
 
 // 玩家挑战成功次数
-void Player::addGame(bool success) {
+void Player::addGame(bool success){
     totalGames++;
-    if (success) successGames++;
+    if(success) successGames++;
 }
 
 // 获取玩家总局数
-int Player::getTotalGames() const { return totalGames; }
+int Player::getTotalGames() const{ return totalGames; }
 
 // 获取玩家挑战成功次数
-int Player::getSuccessGames() const { return successGames; }
+int Player::getSuccessGames() const{ return successGames; }
 
 // 获取玩家挑战成功概率
-double Player::getSuccessRate() const {
+double Player::getSuccessRate() const{
     return totalGames > 0 ? (double)successGames / totalGames * 100 : 0;
 }
 
@@ -542,8 +540,8 @@ void savePlayerData(const Player& player){
     ifstream inFile(PLAYER_DATA_FILE);
     string line;
     
-    if(inFile.is_open()) {
-        while (getline(inFile, line)) {
+    if(inFile.is_open()){
+        while (getline(inFile, line)){
             stringstream ss(line);
             string name, pwd;
             int score, total, success;
@@ -564,19 +562,19 @@ void savePlayerData(const Player& player){
         }
         outFile.close();
     }
-    else {
+    else{
         cout << "无法打开玩家数据文件，数据保存失败" << endl;
     }   
 }
 
 // 显示积分排行榜
-void displayLeaderboard() {
+void displayLeaderboard(){
     vector<tuple<string, int, double>> players;
-    
+
     ifstream inFile(PLAYER_DATA_FILE);
-    if (inFile.is_open()) {
+    if(inFile.is_open()){
         string line;
-        while (getline(inFile, line)) {
+        while(getline(inFile, line)){
             stringstream ss(line);
             string name, pwd;
             int score, total, success;
@@ -589,24 +587,25 @@ void displayLeaderboard() {
         
         // 按分数降序排序
         sort(players.begin(), players.end(), 
-             [](const auto& a, const auto& b) {
+             [](const auto& a, const auto& b){
                  return get<1>(a) > get<1>(b);
              });
         
         cout << "\n===== 积分排行榜 =====" << endl;
         cout << "排名\t用户名\t积分\t成功率" << endl;
         
-        for (size_t i = 0; i < players.size(); ++i) {
+        for(size_t i = 0; i < players.size(); ++i){
             cout << i + 1 << "\t" 
                  << get<0>(players[i]) << "\t" 
                  << get<1>(players[i]) << "\t"
                  << fixed << setprecision(1) << get<2>(players[i]) << "%" << endl;
         }
         
-        if (players.empty()) {
+        if(players.empty()){
             cout << "暂无玩家数据" << endl;
         }
-    } else {
+    }
+    else{
         cout << "无法打开玩家数据文件，无法显示排行榜。" << endl;
     }
 }
@@ -616,9 +615,6 @@ int calculatePoints(int difficulty, bool correct) {
     // 根据难度级别设置基础分数
     int Points = difficulty;
     
-    if (correct) {
-        return Points * 2;  
-    } else {
-        return Points;  
-    }
+    if (correct) { return Points * 2; } 
+    else { return Points; }
 }

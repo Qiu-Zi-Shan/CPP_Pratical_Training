@@ -1,16 +1,16 @@
 #include "Ship.h"
-#include<iostream>
-#include<sstream>
-#include<vector>
-#include<ctime>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <ctime>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
 using namespace std;
 
 int GRID_SIZE;
 
-int main() {
+int main(){
     // 用当前时间作为随机数种子
     srand(static_cast<unsigned int>(time(0)));  
     
@@ -20,7 +20,7 @@ int main() {
     
     cout << "===== 欢迎来到脑力航迹游戏 =====" << endl;
     
-    while (!loggedIn) {
+    while(!loggedIn){
         cout << "1. 登录" << endl;
         cout << "2. 注册" << endl;
         cout << "3. 查看排行榜" << endl;
@@ -33,7 +33,7 @@ int main() {
         
         string username, password;
         
-        switch (choice) {
+        switch(choice){
             case 1: // 登录
                 cout << "请输入用户名: ";
                 getline(cin, username);
@@ -49,13 +49,13 @@ int main() {
                 cout << "请输入密码: ";
                 getline(cin, password);
                 
-                if (registerPlayer(username, password)) {
+                if(registerPlayer(username, password)){
                     cout << "是否立即登录? (y/n): ";
                     char loginChoice;
                     cin >> loginChoice;
                     cin.ignore();
                     
-                    if (loginChoice == 'y') {
+                    if(loginChoice == 'y'){
                         loggedIn = loginPlayer(username, password, currentPlayer);
                     }
                 }
@@ -77,7 +77,7 @@ int main() {
     // 游戏主循环
     bool playAgain = true;
     
-    while (playAgain) {
+    while(playAgain){
         // 随机生成网格大小（范围：5-10）
         GRID_SIZE = 5 + rand() % 6;
         cout << "网格大小: " << GRID_SIZE << "x" << GRID_SIZE << endl;
@@ -93,13 +93,13 @@ int main() {
         // 随机选择游戏模式
         int modeChoice = rand() % 3;  // 0, 1, 2 三种模式
         
-        if (modeChoice == 0) {
+        if(modeChoice == 0){
             cout << "游戏模式：由B的相对航迹推测B的实际航迹" << endl;
         } 
-        else if (modeChoice == 1) {
+        else if(modeChoice == 1){
             cout << "游戏模式：由B的实际航迹推测B的相对航迹" << endl;
         }
-        else {
+        else{
             cout << "游戏模式：逐步推测B的航迹" << endl;
             difficulty = difficulty + 2;  // 难度上升两级
         }
@@ -118,12 +118,12 @@ int main() {
         vector<TrajectoryPoint> relativeB = calculateRelativePath(A.trajectory, B.trajectory);
     
         // 显示游戏信息
-        cout << "===== 脑力航迹游戏 =====" << endl;
+        cout << "===== 脑力航迹 =====" << endl;
         
         bool correct = false;
         vector<TrajectoryPoint> playerAnswer;
         
-        if (modeChoice == 0) {
+        if(modeChoice == 0){
             // 模式1：显示A的实际轨迹和B的相对轨迹
             printTrajectory(A.trajectory, "船A的实际");
             printTrajectory(relativeB, "船B的相对");
@@ -134,7 +134,7 @@ int main() {
             correct = processPlayerInputMode1(B.trajectory, playerAnswer);
             displayResultMode1(correct, A, B, playerAnswer);
         } 
-        else if (modeChoice == 1) {
+        else if(modeChoice == 1){
             // 模式2：显示A的实际轨迹和B的实际轨迹
             printTrajectory(A.trajectory, "船A的实际");
             printTrajectory(B.trajectory, "船B的实际");
@@ -145,15 +145,14 @@ int main() {
             correct = processPlayerInputMode2(relativeB, playerAnswer);
             displayResultMode2(correct, A, B, relativeB, playerAnswer);
         }
-        else {
+        else{
             // 模式3：逐步显示和验证
             vector<TrajectoryPoint> playerAnswer;
             correct = true;
             
-            // 开始计时
             auto startTime = chrono::steady_clock::now();
 
-            for (size_t step = 0; step < A.trajectory.size() && correct; ++step) {
+            for(size_t step = 0; step < A.trajectory.size() && correct; ++step) {
                 // 随机决定这一步是猜实际航迹还是相对航迹
                 bool isRelative = rand() % 2;
                 
@@ -165,16 +164,17 @@ int main() {
                 vector<TrajectoryPoint> currentB(B.trajectory.begin(), B.trajectory.begin() + step + 1);
                 vector<TrajectoryPoint> currentRelativeB(relativeB.begin(), relativeB.begin() + step + 1);
                 
-                if (!isRelative) {
+                if(!isRelative){
                     // 如果要猜B的实际航迹，显示完整的相对航迹，但实际航迹少显示一步
                     printTrajectory(currentRelativeB, "船B的相对");
-                    if (step > 0) {
+                    if(step > 0){
                         vector<TrajectoryPoint> prevB(B.trajectory.begin(), B.trajectory.begin() + step);
                         printTrajectory(prevB, "船B的实际");
                     }
                     cout << "\n参照物A的实际位置和物体B的相对航迹:" << endl;
                     printCombinedGrid(currentA, currentRelativeB);
-                } else {
+                } 
+                else{
                     // 如果要猜B的相对航迹，显示完整的实际航迹，但相对航迹少显示一步
                     printTrajectory(currentB, "船B的实际");
                     if (step > 0) {
@@ -186,48 +186,47 @@ int main() {
                 }
 
                 // 处理玩家输入
-                if (!isRelative) {
+                if(!isRelative){
                     // 如果要猜B的实际航迹，需要与B的实际航迹比较
                     correct = processPlayerInputMode3(B.trajectory, playerAnswer, isRelative);
-                } else {
+                } 
+                else{
                     // 如果要猜B的相对航迹，需要与B的相对航迹比较
                     correct = processPlayerInputMode3(relativeB, playerAnswer, isRelative);
                 }
 
                 // 显示当前步骤结果
                 displayResultMode3(correct, A, B, relativeB, playerAnswer, isRelative);
-
-                // 切换下一步是显示相对还是实际航迹
-                isRelative = !isRelative;
             }
             
             // 结束计时并显示总用时
             auto endTime = chrono::steady_clock::now();
             auto duration = chrono::duration_cast<chrono::seconds>(endTime - startTime);
-            if (correct) {
+            if(correct){
                 cout << "\n恭喜完成挑战！总用时：" << duration.count() << " 秒。" << endl;
-            } else {
+            } 
+            else{
                 cout << "\n挑战失败。本次用时：" << duration.count() << " 秒。" << endl;
             }
         }
 
         // 更新玩家积分和游戏记录
         int points = calculatePoints(difficulty, correct);
-        currentPlayer.addGame(correct);  // 添加这行
-        if (correct) {
+        currentPlayer.addGame(correct);  
+        if(correct){
             cout << "恭喜！你获得了 " << points << " 分！" << endl;
             currentPlayer.addScore(points);
         }
-        else {
-            if (currentPlayer.getScore() > points) {
+        else{
+            if(currentPlayer.getScore() > points){
                 cout << "很遗憾，你失去了 " << points << " 分。" << endl;
                 currentPlayer.reduceScore(points);
             }
-            else if (currentPlayer.getScore() > 0) {
+            else if(currentPlayer.getScore() > 0) {
                 cout << "很遗憾，你失去了 " << currentPlayer.getScore() << " 分。" << endl;
                 currentPlayer.setScore(0);
             }
-            else {
+            else{
                 cout << "很遗憾，答错了。但你的分数已经为0，不再扣分。" << endl;
             }
         }
