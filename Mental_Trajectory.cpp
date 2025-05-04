@@ -1,14 +1,10 @@
 #include "Mental_Trajectory.h"
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <algorithm>
-#include <iomanip>
-#include <cstdlib>
-#include <tuple>
-using namespace std;
 
 const string PlayerManager::PLAYER_DATA_FILE = "C:\\Cpl\\CPP_Pratical_Training\\player_data.txt";
+const string LeaderboardManager::CHALLENGE_LEADERBOARD_FILE= "C:\\Cpl\\CPP_Pratical_Training\\challenge_leaderboard.txt";;
+const string LeaderboardManager::ADVENTURE_LEADERBOARD_FILE= "C:\\Cpl\\CPP_Pratical_Training\\adventure_leaderboard.txt";;
+const string LeaderboardManager::LEVEL_TIME_FILE= "C:\\Cpl\\CPP_Pratical_Training\\level_time.txt";;
+
 
 // Ship类的实现————————————————————
 Ship::Ship(int startX, int startY){
@@ -20,11 +16,15 @@ void Ship::move(int dx, int dy){
 }
 
 // Player类的实现————————————————————
-Player::Player() : score(0), totalGames(0), successGames(0){}
-Player::Player(const string& name, const string& pwd) : username(name), password(pwd), score(0), totalGames(0), successGames(0){}
+Player::Player() : score(0), totalGames(0), successGames(0), challengeScore(0), challengeGames(0), challengeSuccessGames(0){}
+Player::Player(const string& name, const string& pwd) : username(name), password(pwd), 
+                score(0), totalGames(0), successGames(0), 
+                challengeScore(0), challengeGames(0), challengeSuccessGames(0){}
 
 string Player::getUsername() const{ return username; }
 bool Player::checkPassword(const string& pwd) const{ return password == pwd; }
+
+// 娱乐模式分数相关方法
 int Player::getScore() const{ return score; }
 void Player::setScore(int newScore){ score = newScore; }
 void Player::addScore(int points){ score += points; }
@@ -37,6 +37,45 @@ int Player::getTotalGames() const{ return totalGames; }
 int Player::getSuccessGames() const{ return successGames; }
 double Player::getSuccessRate() const{
     return totalGames == 0 ? 0 : (double)(successGames) / totalGames * 100;
+}
+
+// 挑战模式分数相关方法
+int Player::getChallengeScore() const { return challengeScore; }
+void Player::setChallengeScore(int newScore) { challengeScore = newScore; }
+void Player::addChallengeScore(int points) { challengeScore += points; }
+void Player::reduceChallengeScore(int points) { challengeScore -= points; }
+void Player::addChallengeGame(bool success) { 
+    challengeGames++;
+    if(success) challengeSuccessGames++;
+}
+int Player::getTotalChallengeGames() const { return challengeGames; }
+int Player::getSuccessChallengeGames() const { return challengeSuccessGames; }
+double Player::getChallengeSuccessRate() const {
+    return challengeGames == 0 ? 0 : (double)(challengeSuccessGames) / challengeGames * 100;
+}
+
+// Player类等级方法实现
+PlayerRank Player::getChallengeRank() const{ return calculateRank(challengeScore); }
+
+string Player::getChallengeRankName() const{
+    switch(getChallengeRank()){
+        case PlayerRank::BRONZE: return "青铜";
+        case PlayerRank::SILVER: return "白银";
+        case PlayerRank::GOLD: return "黄金";
+        case PlayerRank::PLATINUM: return "铂金";
+        case PlayerRank::DIAMOND: return "钻石";
+        case PlayerRank::MASTER: return "大师";
+        default: return "未知";
+    }
+}
+
+PlayerRank Player::calculateRank(int challengeScore){
+    if(challengeScore < 50) return PlayerRank::BRONZE;
+    else if(challengeScore < 150) return PlayerRank::SILVER;
+    else if(challengeScore < 300) return PlayerRank::GOLD;
+    else if(challengeScore < 500) return PlayerRank::PLATINUM;
+    else if(challengeScore < 800) return PlayerRank::DIAMOND;
+    else return PlayerRank::MASTER;
 }
 
 // GameRenderer类的实现————————————————————
@@ -63,7 +102,7 @@ void GameRenderer::printCombinedGrid(const vector<TrajectoryPoint>& pathA, const
     for(int i = 0; i < pathA.size(); i++){
         int x = pathA[i].x;
         int y = pathA[i].y;
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize){
+        if(x >= 0 && x < gridSize && y >= 0 && y < gridSize){
             grid[y][x] = 'A';
         }
     }
@@ -85,14 +124,14 @@ void GameRenderer::printCombinedGrid(const vector<TrajectoryPoint>& pathA, const
     
     // 打印网格
     cout << "  ";
-    for (int x = 0; x < gridSize; x++) {
+    for(int x = 0; x < gridSize; x++){
         cout << x << " ";
     }
     cout << endl;
     
-    for (int y = 0; y < gridSize; y++) {
+    for(int y = 0; y < gridSize; y++){
         cout << y << " ";
-        for (int x = 0; x < gridSize; x++) {
+        for(int x = 0; x < gridSize; x++){
             cout << grid[y][x] << " ";
         }
         cout << endl;
@@ -198,7 +237,7 @@ void GameManager::generateShipTrajectory(Ship& ship){
         TrajectoryPoint last = ship.trajectory.back();
         int newX = last.x + dx[direction];
         int newY = last.y + dy[direction];
-        if(newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) { 
+        if(newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize){ 
             continue;  // 重新选择方向
         }
 
@@ -264,19 +303,19 @@ int GameManager::calculateDifficulty(){
     int difficulty = 1;
     
     if(steps <= 6){ difficulty = 1; } 
-    else if (steps <= 8){ difficulty = 2; } 
-    else if (steps <= 10){ difficulty = 3; } 
-    else if (steps <= 12){ difficulty = 4; }
+    else if(steps <= 8){ difficulty = 2; } 
+    else if(steps <= 10){ difficulty = 3; } 
+    else if(steps <= 12){ difficulty = 4; }
     else{ difficulty = 5; }
     return difficulty;
 }
 
 int GameManager::calculatePoints(int difficulty, bool correct){
-    if(correct) { return difficulty * 2; }
+    if(correct){ return difficulty * 2; }
     else{ return difficulty; }
 }
 
-bool GameManager::playGameMode(Player& player){
+bool GameManager::playGameMode(Player& player, bool isChallenge){
     // 初始化游戏
     initializeGame();
     
@@ -328,7 +367,7 @@ bool GameManager::playGameMode(Player& player){
         
         auto startTime = chrono::steady_clock::now();
 
-        for(size_t step = 0; step < shipA.trajectory.size() && correct; ++step) {
+        for(size_t step = 0; step < shipA.trajectory.size() && correct; ++step){
             // 随机决定这一步是猜实际航迹还是相对航迹
             bool isRelative = rand() % 2;
             
@@ -378,29 +417,6 @@ bool GameManager::playGameMode(Player& player){
             cout << "\n挑战失败。本次用时：" << duration.count() << " 秒。" << endl;
         }
     }
-
-    // 更新玩家积分和游戏记录
-    int points = calculatePoints(difficulty, correct);
-    player.addGame(correct);
-    if(correct){
-        cout << "恭喜！你获得了 " << points << " 分！" << endl;
-        player.addScore(points);
-    }
-    else{
-        if(player.getScore() > points){
-            cout << "很遗憾，你失去了 " << points << " 分。" << endl;
-            player.reduceScore(points);
-        }
-        else if(player.getScore() > 0) {
-            cout << "很遗憾，你失去了 " << player.getScore() << " 分。" << endl;
-            player.setScore(0);
-        }
-        else{
-            cout << "很遗憾，答错了。但你的分数已经为0，不再扣分。" << endl;
-        }
-    }
-    
-    cout << "当前积分: " << player.getScore() << endl;
     return correct;
 }
 
@@ -436,11 +452,11 @@ bool GameManager::processPlayerInputMode1(vector<TrajectoryPoint>& playerAnswer)
 
     // 验证答案
     bool correct = true;
-    if (playerAnswer.size() != shipB.trajectory.size()) {
+    if(playerAnswer.size() != shipB.trajectory.size()){
         correct = false;
     } 
     else{
-        for(size_t i = 0; i < shipB.trajectory.size(); i++) {
+        for(size_t i = 0; i < shipB.trajectory.size(); i++){
             if(playerAnswer[i].x != shipB.trajectory[i].x || playerAnswer[i].y != shipB.trajectory[i].y){
                 correct = false;
                 break;
@@ -547,7 +563,7 @@ void GameManager::displayResultMode1(bool correct, const vector<TrajectoryPoint>
 }
 
 void GameManager::displayResultMode2(bool correct, const vector<TrajectoryPoint>& playerAnswer){
-    if (correct) {
+    if(correct){
         cout << "正确！B的相对航迹：" << endl;
         GameRenderer::printTrajectory(relativeB, "B的相对");
         cout << "\n最终位置图示:" << endl;
@@ -586,8 +602,6 @@ int GameManager::getDifficulty() const{ return difficulty; }
 
 int GameManager::getGameMode() const{ return gameMode; }
 
-int GameManager::getGridSize() const { return gridSize; }
-
 int GameManager::generateGridSize(){ 
     gridSize = 5 + rand() % 6;  // 随机生成网格大小（范围：5-10）
     return gridSize;
@@ -596,6 +610,17 @@ int GameManager::generateGridSize(){
 int GameManager::generateSteps(){ 
     steps = gridSize + rand() % (gridSize / 2); // 根据网格大小，随机生成航迹步数
     return  steps;
+}
+
+void GameManager::setupForLevel(const Level& level){
+    gridSize = level.gridSize;
+    steps = level.steps;
+    gameMode = level.gameMode;
+}
+
+void GameManager::setMaxDifficulty(int max){
+    // 确保生成的难度不超过设定的上限
+    difficulty = min(calculateDifficulty(), max);
 }
 
 const Ship& GameManager::getShipA() const{ return shipA; }
@@ -649,19 +674,42 @@ bool PlayerManager::loginPlayer(const string& username, const string& password, 
             stringstream ss(line);
             string name, pwd;
             int score, total, success;
+            int challengeScore = 0, challengeTotal = 0, challengeSuccess = 0;
             ss >> name >> pwd >> score >> total >> success;
             
+            // 尝试读取挑战模式的数据（可能不存在于旧数据中）
+            if(ss >> challengeScore >> challengeTotal >> challengeSuccess){
+                // 成功读取了挑战模式数据
+            }
+
             if(name == username){
                 userFound = true;
                 if(pwd == password){
-                    player = Player(username, password); // 创建一个新的Player对象表示当前玩家
+                    player = Player(username, password); 
                     player.setScore(score);
-                    // 初始化当前玩家数据
+                    player.setChallengeScore(challengeScore);
+                    
+                    // 初始化娱乐模式数据
                     for(int i = 0; i < total; i++){
                         player.addGame(i < success);
                     }
-                    cout << "登录成功！当前积分：" << score 
-                         << " 成功率：" << player.getSuccessRate() << "%" << endl << endl;
+                    
+                    // 初始化挑战模式数据
+                    for(int i = 0; i < challengeTotal; i++){
+                        player.addChallengeGame(i < challengeSuccess);
+                    }
+
+                    cout << "登录成功！" << endl;
+                    cout << "--------------------" << endl;
+                    cout << "娱乐模式积分: " << score << endl;
+                    cout << "游戏场次: " << total << "   成功: " << success 
+                        << "   成功率: " << player.getSuccessRate() << "%" << endl << endl;
+                        
+                    cout << "挑战模式积分: " << challengeScore << endl;
+                    cout << "当前等级: " << player.getChallengeRankName() << endl;
+                    cout << "游戏场次: " << challengeTotal << "   成功: " << challengeSuccess
+                        << "   成功率: " << player.getChallengeSuccessRate() << "%" << endl;
+                    cout << "--------------------" << endl;
                     return true;
                 } 
                 else{ break; } // 用户名找到但密码错误，停止搜索
@@ -669,7 +717,7 @@ bool PlayerManager::loginPlayer(const string& username, const string& password, 
         }
         inFile.close();
         
-        if(userFound) { cout << "密码错误。" << endl; } 
+        if(userFound){ cout << "密码错误。" << endl; } 
         else { cout << "用户名不存在。" << endl; }
     } 
     else { cout << "无法打开玩家数据文件，登录失败。" << endl; }
@@ -682,15 +730,20 @@ void PlayerManager::savePlayerData(const Player& player){
     string line;
     
     if(inFile.is_open()){
-        while (getline(inFile, line)){
+        while(getline(inFile, line)){
             stringstream ss(line);
             string name, pwd;
-            int score, total, success;
-            ss >> name >> pwd >> score >> total >> success;
-            if (name == player.getUsername()) {
-                line = name + " " + pwd + " " + to_string(player.getScore()) + " " 
-                     + to_string(player.getTotalGames()) + " " 
-                     + to_string(player.getSuccessGames());
+            ss >> name >> pwd;
+
+            if(name == player.getUsername()){
+                // 更新该玩家的数据行
+                line = name + " " + pwd + 
+                       " " + to_string(player.getScore()) + 
+                       " " + to_string(player.getTotalGames()) + 
+                       " " + to_string(player.getSuccessGames()) +
+                       " " + to_string(player.getChallengeScore()) +
+                       " " + to_string(player.getTotalChallengeGames()) +
+                       " " + to_string(player.getSuccessChallengeGames());
             }
             lines.push_back(line);
         }
@@ -698,7 +751,7 @@ void PlayerManager::savePlayerData(const Player& player){
         
         // 重新写入文件
         ofstream outFile(PLAYER_DATA_FILE);
-        for (const auto& l : lines) { outFile << l << endl; }
+        for(const auto& l : lines){ outFile << l << endl; }
         outFile.close();
     }
     else{ cout << "无法打开玩家数据文件，数据保存失败" << endl; }   
@@ -714,8 +767,16 @@ void PlayerManager::displayLeaderboard(){
             stringstream ss(line);
             string name, pwd;
             int score, total, success;
+            int challengeScore, challengeTotal, challengeSuccess;
             ss >> name >> pwd >> score >> total >> success;
-            
+
+            // 尝试读取挑战模式数据，如果不存在则使用默认值
+            if(!(ss >> challengeScore >> challengeTotal >> challengeSuccess)){
+                challengeScore = 0;
+                challengeTotal = 0;
+                challengeSuccess = 0;
+            }
+
             double rate = total > 0 ? (double)success / total * 100 : 0;
             players.push_back({name, score, rate});
         }
@@ -727,7 +788,7 @@ void PlayerManager::displayLeaderboard(){
                  return get<1>(a) > get<1>(b);
              });
         
-        cout << "\n===== 积分排行榜 =====" << endl;
+        cout << "\n===== 娱乐模式积分排行榜 =====" << endl;
         cout << "排名\t用户名\t积分\t成功率" << endl;
         
         for(size_t i = 0; i < players.size(); ++i){
@@ -740,4 +801,458 @@ void PlayerManager::displayLeaderboard(){
         if(players.empty()){ cout << "暂无玩家数据" << endl; }
     }
     else{ cout << "无法打开玩家数据文件，无法显示排行榜。" << endl; }
+}
+
+// ChallengeMode类实现————————————————
+ChallengeMode::ChallengeMode(PlayerRank rank){
+    maxDifficulty = getMaxDifficultyForRank(rank);
+}
+
+bool ChallengeMode::playChallenge(Player& player){
+    gameManager.setMaxDifficulty(maxDifficulty);
+    
+    // 生成游戏网格和步数
+    gameManager.generateGridSize();
+    gameManager.generateSteps();
+    
+    cout << "===== 挑战积分模式 =====" << endl;
+    cout << "当前等级: " << player.getChallengeRankName() << endl;
+    cout << "当前挑战积分: " << player.getChallengeScore() << endl;
+    cout << "本次挑战最高难度: " << maxDifficulty << endl;
+
+    // 执行游戏
+    bool result = gameManager.playGameMode(player, true); // 传入true表示这是挑战模式
+    
+    // 计算分数并更新
+    int points = gameManager.calculatePoints(gameManager.getDifficulty(), result);
+    
+    if(result){
+        cout << "恭喜！你获得了 " << points << " 点挑战积分！" << endl;
+        player.addChallengeScore(points);
+    } 
+    else{
+        if(player.getChallengeScore() > points){
+            cout << "很遗憾，你失去了 " << points << " 点挑战积分。" << endl;
+            player.reduceChallengeScore(points);
+        } 
+        else if(player.getChallengeScore() > 0){
+            cout << "很遗憾，你失去了 " << player.getChallengeScore() << " 点挑战积分。" << endl;
+            player.setChallengeScore(0);
+        } 
+        else{
+            cout << "很遗憾，答错了。但你的挑战积分已经为0，不再扣分。" << endl;
+        }
+    }
+    
+    // 更新游戏记录
+    player.addChallengeGame(result);
+    
+    cout << "当前挑战积分: " << player.getChallengeScore() << endl;
+    cout << "当前等级: " << player.getChallengeRankName() << endl;
+    
+    // 保存到挑战模式排行榜
+    LeaderboardManager::saveChallengeScore(player);
+    
+    return result;
+}
+
+int ChallengeMode::getMaxDifficultyForRank(PlayerRank rank){
+    switch(rank){
+        case PlayerRank::BRONZE: return 2;  
+        case PlayerRank::SILVER: return 3;
+        case PlayerRank::GOLD: return 4;   
+        case PlayerRank::PLATINUM: return 5; 
+        case PlayerRank::DIAMOND: return 6; 
+        case PlayerRank::MASTER: return 7;   
+        default: return 2;
+    }
+}
+
+// AdventureMode类实现————————————————————
+const vector<Level> AdventureMode::levels = {
+    {1, 5, 6, 1, 150},   // 第1关：5x5网格，6步，模式1(推测相对轨迹)，150秒时限
+    {2, 6, 7, 1, 145},   // 第2关：6x6网格，7步，模式1，145秒时限
+    {3, 6, 8, 0, 145},   // 第3关：6x6网格，8步，模式0(推测实际轨迹)，145秒时限
+    {4, 7, 8, 0, 140},   // 第4关：7x7网格，8步，模式0，140秒时限
+    {5, 7, 9, 2, 130},  // 第5关：7x7网格，9步，模式2(交替推测)，130秒时限
+    {6, 8, 10, 2, 125}, // 第6关：8x8网格，10步，模式2，125秒时限
+    {7, 9, 11, 2, 115}, // 第7关：9x9网格，11步，模式2，115秒时限
+    {8, 10, 12, 2, 100} // 第8关：10x10网格，12步，模式2，100秒时限
+};
+
+AdventureMode::AdventureMode() : currentLevel(1){}
+
+bool AdventureMode::playLevel(Player& player, int levelNumber){
+    if(levelNumber <= 0 || levelNumber > levels.size()){
+        cout << "关卡不存在！" << endl;
+        return false;
+    }
+    
+    // 获取玩家已解锁的最高关卡
+    int highestUnlocked = getHighestUnlockedLevel(player.getUsername());
+    
+    // 检查玩家是否有权限挑战该关卡
+    if(levelNumber > highestUnlocked){
+        cout << "请先通过第" << highestUnlocked << "关才能挑战第" << levelNumber << "关！" << endl;
+        return false;
+    }
+
+    currentLevel = levelNumber;
+    const Level& level = levels[levelNumber - 1];
+    
+    cout << "===== 挑战第" << level.levelNumber << "关 =====" << endl;
+    cout << "网格大小: " << level.gridSize << "x" << level.gridSize << endl;
+    cout << "步数: " << level.steps << endl;
+    cout << "时间限制: " << level.timeLimit << "秒" << endl;
+    
+    // 设置游戏管理器
+    gameManager.setupForLevel(level);
+    
+    // 开始计时
+    auto startTime = chrono::steady_clock::now();
+    
+    // 执行游戏
+    bool result = gameManager.playGameMode(player, false);
+    
+    // 结束计时
+    auto endTime = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::seconds>(endTime - startTime);
+    int timeSeconds = duration.count();
+    
+    cout << "用时: " << timeSeconds << "秒" << endl;
+    
+    // 检查是否超时
+    if(timeSeconds > level.timeLimit){
+        cout << "超出时间限制！关卡失败。" << endl;
+        result = false;
+    }
+    
+    if(result){
+        // 保存关卡完成记录和用时
+        LeaderboardManager::saveAdventureProgress(player.getUsername(), levelNumber);
+        LeaderboardManager::saveLevelTime(player.getUsername(), levelNumber, timeSeconds);
+        
+        cout << "恭喜通过第" << levelNumber << "关！" << endl;
+        
+        // 显示排行榜选项
+        displayLeaderboardOptions(levelNumber);
+        
+        // 如果不是最后一关，并且刚刚解锁了下一关
+        if(levelNumber < levels.size() && levelNumber == highestUnlocked){
+            cout << "你已解锁第" << (levelNumber + 1) << "关！" << endl;
+            cout << "是否挑战下一关? (y/n): ";
+            char choice;
+            cin >> choice;
+            cin.ignore();
+            
+            if(choice == 'y'){
+                return playLevel(player, levelNumber + 1);
+            }
+        }
+    } 
+    else{ cout << "关卡失败。请再接再厉！" << endl; }
+    
+    return result;
+}
+
+int AdventureMode::getCurrentLevel() const{ return currentLevel; }
+
+int AdventureMode::getLevelCount(){ return levels.size(); }
+
+int AdventureMode::getHighestUnlockedLevel(const string& username){
+    int highestLevel = 0;
+    
+    ifstream inFile("C:\\Cpl\\CPP_Pratical_Training\\adventure_leaderboard.txt");
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int level;
+            ss >> name >> level;
+            
+            if(name == username){
+                highestLevel = level;
+                break;
+            }
+        }
+        inFile.close();
+    }
+    // 如果找不到记录，默认第一关可用
+    return max(1, highestLevel);
+}
+
+void AdventureMode::displayLeaderboardOptions(int levelNumber){
+    bool viewLeaderboard = true;
+    
+    while(viewLeaderboard){
+        cout << "\n查看排行榜：" << endl;
+        cout << "1. 查看闯关总排行榜" << endl;
+        cout << "2. 查看本关用时排行榜" << endl;
+        cout << "3. 继续游戏" << endl;
+        cout << "请选择: ";
+        
+        int choice;
+        cin >> choice;
+        cin.ignore();
+        
+        switch(choice){
+            case 1:
+                LeaderboardManager::displayAdventureLeaderboard();
+                break;
+            case 2:
+                LeaderboardManager::displayLevelTimeLeaderboard(levelNumber);
+                break;
+            case 3:
+                viewLeaderboard = false;
+                break;
+            default:
+                cout << "无效选择，请重试。" << endl;
+        }
+    }
+}
+
+// LeaderboardManager类实现————————————————————
+void LeaderboardManager::saveChallengeScore(const Player& player){
+    vector<tuple<string, int, double>> players;
+    
+    // 读取现有排行榜
+    ifstream inFile(CHALLENGE_LEADERBOARD_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int score;
+            double rate;
+            ss >> name >> score >> rate;
+            
+            // 如果找到当前玩家，用新数据替换
+            if(name == player.getUsername()){ continue; }
+            players.push_back({name, score, rate});
+        }
+        inFile.close();
+    }
+    
+    // 添加当前玩家数据
+    players.push_back({player.getUsername(), player.getChallengeScore(), player.getChallengeSuccessRate()});
+    
+    // 按分数降序排序，同分按成功率降序
+    sort(players.begin(), players.end(), 
+         [](const auto& a, const auto& b){
+             if(get<1>(a) != get<1>(b)){
+                 return get<1>(a) > get<1>(b);
+             }
+             return get<2>(a) > get<2>(b);
+         });
+    
+    // 写回文件
+    ofstream outFile(CHALLENGE_LEADERBOARD_FILE);
+    if(outFile.is_open()){
+        for(const auto& p : players){
+            outFile << get<0>(p) << " " << get<1>(p) << " " << get<2>(p) << endl;
+        }
+        outFile.close();
+    }
+}
+
+void LeaderboardManager::saveAdventureProgress(const string& username, int level){
+    vector<pair<string, int>> players;
+    
+    // 读取现有数据
+    ifstream inFile(ADVENTURE_LEADERBOARD_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int maxLevel;
+            ss >> name >> maxLevel;
+            
+            // 如果找到当前玩家且新关卡更高，更新
+            if(name == username){ maxLevel = max(maxLevel, level); }
+            players.push_back({name, maxLevel});
+        }
+        inFile.close();
+    }
+    
+    // 如果没找到当前玩家，添加
+    auto it = find_if(players.begin(), players.end(), 
+                     [&username](const auto& p){ return p.first == username; });
+    if(it == players.end()){
+        players.push_back({username, level});
+    }
+    
+    // 按关卡降序排序
+    sort(players.begin(), players.end(), 
+         [](const auto& a, const auto& b){ return a.second > b.second; });
+    
+    // 写回文件
+    ofstream outFile(ADVENTURE_LEADERBOARD_FILE);
+    if(outFile.is_open()){
+        for(const auto& p : players){
+            outFile << p.first << " " << p.second << endl;
+        }
+        outFile.close();
+    }
+}
+
+void LeaderboardManager::saveLevelTime(const string& username, int level, int timeSeconds){
+    vector<tuple<string, int, int>> records; // 用户名、关卡、用时
+    
+    // 读取现有记录
+    ifstream inFile(LEVEL_TIME_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int lvl, time;
+            ss >> name >> lvl >> time;
+            
+            // 如果找到相同用户和关卡的记录，跳过
+            if(name == username && lvl == level){
+                continue;
+            }
+            
+            records.push_back({name, lvl, time});
+        }
+        inFile.close();
+    }
+    
+    // 添加新记录
+    records.push_back({username, level, timeSeconds});
+    
+    // 写回文件
+    ofstream outFile(LEVEL_TIME_FILE);
+    if(outFile.is_open()){
+        for(const auto& r : records){
+            outFile << get<0>(r) << " " << get<1>(r) << " " << get<2>(r) << endl;
+        }
+        outFile.close();
+    }
+}
+
+void LeaderboardManager::displayChallengeLeaderboard(){
+    vector<tuple<string, int, double, string>> players; // 用户名、分数、成功率、等级名称
+    
+    ifstream inFile(CHALLENGE_LEADERBOARD_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int score;
+            double rate;
+            ss >> name >> score >> rate;
+            
+            // 计算等级
+            PlayerRank rank = Player::calculateRank(score);
+            string rankName;
+            switch(rank){
+                case PlayerRank::BRONZE: rankName = "青铜"; break;
+                case PlayerRank::SILVER: rankName = "白银"; break;
+                case PlayerRank::GOLD: rankName = "黄金"; break;
+                case PlayerRank::PLATINUM: rankName = "铂金"; break;
+                case PlayerRank::DIAMOND: rankName = "钻石"; break;
+                case PlayerRank::MASTER: rankName = "大师"; break;
+            }
+            
+            players.push_back({name, score, rate, rankName});
+        }
+        inFile.close();
+        
+        cout << "\n===== 挑战积分排行榜 =====" << endl;
+        cout << "排名\t用户名\t积分\t成功率\t等级" << endl;
+        
+        for(size_t i = 0; i < players.size(); ++i){
+            cout << i + 1 << "\t" 
+                 << get<0>(players[i]) << "\t" 
+                 << get<1>(players[i]) << "\t"
+                 << fixed << setprecision(1) << get<2>(players[i]) << "%\t"
+                 << get<3>(players[i]) << endl;
+        }
+        
+        if(players.empty()){
+            cout << "暂无玩家数据" << endl;
+        }
+    } 
+    else{
+        cout << "无法打开排行榜文件。" << endl;
+    }
+}
+
+void LeaderboardManager::displayAdventureLeaderboard(){
+    vector<pair<string, int>> players;
+    
+    ifstream inFile(ADVENTURE_LEADERBOARD_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int level;
+            ss >> name >> level;
+            players.push_back({name, level});
+        }
+        inFile.close();
+        
+        // 按关卡降序排序
+        sort(players.begin(), players.end(), 
+             [](const auto& a, const auto& b){ return a.second > b.second; });
+        
+        cout << "\n===== 闯关模式排行榜 =====" << endl;
+        cout << "排名\t用户名\t已通过关卡" << endl;
+        
+        for(size_t i = 0; i < players.size(); ++i){
+            cout << i + 1 << "\t" 
+                 << players[i].first << "\t" 
+                 << players[i].second << endl;
+        }
+        
+        if(players.empty()){
+            cout << "暂无玩家数据" << endl;
+        }
+    }
+    else{
+        cout << "无法打开排行榜文件。" << endl;
+    }
+}
+
+void LeaderboardManager::displayLevelTimeLeaderboard(int level){
+    vector<pair<string, int>> timesForLevel; // 用户名、用时
+    
+    ifstream inFile(LEVEL_TIME_FILE);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int lvl, time;
+            ss >> name >> lvl >> time;
+            
+            if(lvl == level){
+                timesForLevel.push_back({name, time});
+            }
+        }
+        inFile.close();
+        
+        // 按用时升序排序
+        sort(timesForLevel.begin(), timesForLevel.end(), 
+             [](const auto& a, const auto& b){ return a.second < b.second; });
+        
+        cout << "\n===== 第" << level << "关用时排行榜 =====" << endl;
+        cout << "排名\t用户名\t用时(秒)" << endl;
+        
+        for(size_t i = 0; i < timesForLevel.size(); ++i){
+            cout << i + 1 << "\t" 
+                 << timesForLevel[i].first << "\t" 
+                 << timesForLevel[i].second << endl;
+        }
+        
+        if(timesForLevel.empty()){
+            cout << "暂无完成此关卡的玩家" << endl;
+        }
+    } 
+    else{ cout << "无法打开记录文件。" << endl; }
 }
