@@ -67,23 +67,23 @@ public:
 
     // 娱乐模式分数相关
     int getScore() const;
+    int getTotalGames() const;
+    int getSuccessGames() const;
+    double getSuccessRate() const;
     void setScore(int newScore);
     void addScore(int points);
     void reduceScore(int points);
     void addGame(bool success);
-    int getTotalGames() const;
-    int getSuccessGames() const;
-    double getSuccessRate() const;
     
     // 挑战模式分数相关
     int getChallengeScore() const;
+    int getTotalChallengeGames() const;
+    int getSuccessChallengeGames() const;
+    double getChallengeSuccessRate() const;
     void setChallengeScore(int newScore);
     void addChallengeScore(int points);
     void reduceChallengeScore(int points);
     void addChallengeGame(bool success);
-    int getTotalChallengeGames() const;
-    int getSuccessChallengeGames() const;
-    double getChallengeSuccessRate() const;
 
     // 获取等级（仅挑战模式）
     PlayerRank getChallengeRank() const;
@@ -104,6 +104,8 @@ public:
     
     void initializeGame(); // 初始化游戏
     pair<int, int> randomStart(); // 生成随机起始位置
+    int generateGridSize(); // 生成网格大小
+    int generateSteps(); // 生成步数
     void generateShipTrajectory(Ship& ship); // 生成船只的随机移动航迹
     void generateRelativeTrajectory(Ship& ship); // 生成船只的相对移动轨迹
     vector<TrajectoryPoint> calculateRelativePath(const vector<TrajectoryPoint>& pathA, const vector<TrajectoryPoint>& pathB); // 计算相对轨迹
@@ -126,9 +128,6 @@ public:
     const Ship& getShipA() const; //获取船只A
     const Ship& getShipB() const; //获取船只B
     const vector<TrajectoryPoint>& getRelativeB() const; //获取相对轨迹B
-
-    int generateGridSize(); // 生成网格大小
-    int generateSteps(); // 生成步数
 
     void setupForLevel(const Level& level); // 设置关卡参数
     void setMaxDifficulty(int max); // 设置难度上限
