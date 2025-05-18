@@ -1,1 +1,1 @@
-player1 42 100
+player1 6 青铜 1

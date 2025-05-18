@@ -31,7 +31,6 @@ struct Level{
     int timeLimit; 
 };
 
-
 // 玩家等级枚举
 enum class PlayerRank{
     BRONZE, // 青铜
@@ -205,5 +204,6 @@ public:
     static void displayAdventureLeaderboard();
     static void displayLevelTimeLeaderboard(int level);
 };
+
 
 #endif

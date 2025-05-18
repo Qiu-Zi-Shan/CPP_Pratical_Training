@@ -1014,7 +1014,8 @@ void AdventureMode::displayLeaderboardOptions(int levelNumber){
 
 // LeaderboardManager类实现————————————————————
 void LeaderboardManager::saveChallengeScore(const Player& player){
-    vector<tuple<string, int, double>> players;
+    vector<tuple<string, int, string, double>> players;
+    bool playerFound = false;
     
     // 读取现有排行榜
     ifstream inFile(CHALLENGE_LEADERBOARD_FILE);
@@ -1022,20 +1023,22 @@ void LeaderboardManager::saveChallengeScore(const Player& player){
         string line;
         while(getline(inFile, line)){
             stringstream ss(line);
-            string name;
+            string name, rank;
             int score;
             double rate;
-            ss >> name >> score >> rate;
+            ss >> name >> score >> rank >> rate;
             
-            // 如果找到当前玩家，用新数据替换
             if(name == player.getUsername()){ continue; }
-            players.push_back({name, score, rate});
+            players.push_back({name, score, rank, rate});
         }
         inFile.close();
     }
     
     // 添加当前玩家数据
-    players.push_back({player.getUsername(), player.getChallengeScore(), player.getChallengeSuccessRate()});
+    players.push_back({player.getUsername(), 
+                      player.getChallengeScore(), 
+                      player.getChallengeRankName(), 
+                      player.getChallengeSuccessRate()});
     
     // 按分数降序排序，同分按成功率降序
     sort(players.begin(), players.end(), 
@@ -1043,16 +1046,20 @@ void LeaderboardManager::saveChallengeScore(const Player& player){
              if(get<1>(a) != get<1>(b)){
                  return get<1>(a) > get<1>(b);
              }
-             return get<2>(a) > get<2>(b);
+             return get<3>(a) > get<3>(b);  // 比较成功率
          });
     
     // 写回文件
     ofstream outFile(CHALLENGE_LEADERBOARD_FILE);
     if(outFile.is_open()){
         for(const auto& p : players){
-            outFile << get<0>(p) << " " << get<1>(p) << " " << get<2>(p) << endl;
+            outFile << get<0>(p) << " " << get<1>(p) << " " 
+                   << get<2>(p) << " " << get<3>(p) << endl;
         }
         outFile.close();
+    } 
+    else{
+        cout << "无法打开排行榜文件，保存失败" << endl;
     }
 }
 
@@ -1134,43 +1141,31 @@ void LeaderboardManager::saveLevelTime(const string& username, int level, int ti
 }
 
 void LeaderboardManager::displayChallengeLeaderboard(){
-    vector<tuple<string, int, double, string>> players; // 用户名、分数、成功率、等级名称
+    vector<tuple<string, int, string, double>> players; 
     
     ifstream inFile(CHALLENGE_LEADERBOARD_FILE);
     if(inFile.is_open()){
         string line;
         while(getline(inFile, line)){
             stringstream ss(line);
-            string name;
+            string name, rank;
             int score;
             double rate;
-            ss >> name >> score >> rate;
+            ss >> name >> score >> rank >> rate;
             
-            // 计算等级
-            PlayerRank rank = Player::calculateRank(score);
-            string rankName;
-            switch(rank){
-                case PlayerRank::BRONZE: rankName = "青铜"; break;
-                case PlayerRank::SILVER: rankName = "白银"; break;
-                case PlayerRank::GOLD: rankName = "黄金"; break;
-                case PlayerRank::PLATINUM: rankName = "铂金"; break;
-                case PlayerRank::DIAMOND: rankName = "钻石"; break;
-                case PlayerRank::MASTER: rankName = "大师"; break;
-            }
-            
-            players.push_back({name, score, rate, rankName});
+            players.push_back({name, score, rank, rate});
         }
         inFile.close();
         
         cout << "\n===== 挑战积分排行榜 =====" << endl;
-        cout << "排名\t用户名\t积分\t成功率\t等级" << endl;
+        cout << "排名\t用户名\t积分\t等级\t成功率" << endl;
         
         for(size_t i = 0; i < players.size(); ++i){
             cout << i + 1 << "\t" 
                  << get<0>(players[i]) << "\t" 
                  << get<1>(players[i]) << "\t"
-                 << fixed << setprecision(1) << get<2>(players[i]) << "%\t"
-                 << get<3>(players[i]) << endl;
+                 << get<2>(players[i]) << "\t"
+                 << fixed << setprecision(1) << get<3>(players[i]) << "%" << endl;
         }
         
         if(players.empty()){
