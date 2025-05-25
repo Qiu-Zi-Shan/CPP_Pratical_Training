@@ -317,9 +317,9 @@ class PauseListener{
 private:
     bool isRunning;
     std::atomic<bool> isPaused; // 使用原子变量
+    std::thread listenerThread;
     std::mutex pauseMutex;
     std::condition_variable pauseCV;
-    TimeEngine timeEngine; // 添加计时器引用
 
 public:
     PauseListener();
@@ -327,10 +327,9 @@ public:
     
     void start();
     void stop();
-    bool checkPaused() { return isPaused; } // 内联实现简化方法
+    bool checkPaused();
     void waitIfPaused();
-    void flushInputBuffer();
-    void triggerPause();
+    void flushInputBuffer(); // 添加清空输入缓冲区的方法
     static PauseListener& getInstance();
 };
 
