@@ -57,6 +57,24 @@ string Player::getChallengeRankName() const {
 void Player::setCurrentStage(int stage) { currentStage = stage; }
 int Player::getCurrentStage() const { return currentStage; }
 
+void Player::setStageTime(int stage, int timeSeconds){
+    // 如果没有该关卡记录或新时间更短，则更新
+    if(!hasStageTimeRecord(stage) || timeSeconds < stageTimeRecords[stage]){
+        stageTimeRecords[stage] = timeSeconds;
+    }
+}
+int Player::getStageTime(int stage) const{
+    auto it = stageTimeRecords.find(stage);
+    if(it != stageTimeRecords.end()){
+        return it->second;
+    }
+    return 0; // 返回0表示没有该关卡的记录
+}
+
+bool Player::hasStageTimeRecord(int stage) const{
+    return stageTimeRecords.find(stage) != stageTimeRecords.end();
+}
+
 TimeEngine::TimeEngine() : startTime(), endTime(){}
 
 void TimeEngine::start(){
@@ -65,13 +83,14 @@ void TimeEngine::start(){
 void TimeEngine::end(){
     endTime = chrono::steady_clock::now();
 }
-void TimeEngine::displayTimeCost(){
-    auto timeCost = chrono::duration_cast<chrono::seconds>(getEndTime() - getStartTime());
-    cout << "\n您花费了 " << timeCost.count() << " 秒完成答题。" << endl;
-}
-
 chrono::time_point<chrono::steady_clock> TimeEngine::getStartTime() const{ return startTime; }
 chrono::time_point<chrono::steady_clock> TimeEngine::getEndTime() const{ return endTime; }
+chrono::seconds TimeEngine::getTimeCost(){ 
+    return chrono::duration_cast<chrono::seconds>(getEndTime() - getStartTime()); 
+}
+void TimeEngine::displayTimeCost(){
+    cout << "\n您花费了 " << getTimeCost().count() << " 秒完成答题。" << endl;
+}
 
 bool AbstractBaseGameMode::playBaseGameMode(GameInitializer& initializer){
     vector<TrajectoryPoint> playerAnswer;
@@ -157,6 +176,7 @@ void BaseGameMode1::displayResult(bool correct, const vector<TrajectoryPoint>& p
 
 void BaseGameMode1::timeStart(){ timeEngine.start(); }
 void BaseGameMode1::timeEnd(){ timeEngine.end(); }
+chrono::seconds BaseGameMode1::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode1::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
 BaseGameMode2::BaseGameMode2() : timeEngine(){}
@@ -232,6 +252,7 @@ void BaseGameMode2::displayResult(bool correct, const vector<TrajectoryPoint>& p
 
 void BaseGameMode2::timeStart(){ timeEngine.start(); }
 void BaseGameMode2::timeEnd(){ timeEngine.end(); }
+chrono::seconds BaseGameMode2::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode2::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
 BaseGameMode3::BaseGameMode3() : timeEngine(), isRelative(false){}
@@ -344,6 +365,7 @@ bool BaseGameMode3::playBaseGameMode(GameInitializer& initializer){
 
 void BaseGameMode3::timeStart(){ timeEngine.start(); }
 void BaseGameMode3::timeEnd(){ timeEngine.end(); }
+chrono::seconds BaseGameMode3::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode3::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
 BaseGameModeEngine::BaseGameModeEngine(){
@@ -381,6 +403,7 @@ void BaseGameModeEngine::setCurrentBaseGameMode(){
 AbstractBaseGameMode* BaseGameModeEngine::getCurrentBaseMode(){ return currentBaseGameMode; }
 
 int BaseGameModeEngine::getBaseGameMode(){ return baseGameMode; }
+chrono::seconds BaseGameModeEngine::getTimeCost(){ return currentBaseGameMode -> getTimeCost(); }
 bool BaseGameModeEngine::startBaseGameMode(GameInitializer& initializer){
     // 显示游戏信息
     cout << "网格大小: " << initializer.getGridSize() << "x" << initializer.getGridSize() << endl;
@@ -399,7 +422,7 @@ GameInitializer::GameInitializer(Player& player)
         initializeAllTrajectory();
      }
 GameInitializer::GameInitializer(int stageChoice, Player& player)
-     : gridSize(0), steps(0), difficulty(0), shipA(0, 0), shipB(0, 0), baseGameModeEngine(){
+     : gridSize(0), steps(0), difficulty(0), shipA(0, 0), shipB(0, 0), baseGameModeEngine(stageChoice){
         generateStageSteps(stageChoice);
         generateGridSize();
         initializeAllTrajectory();
@@ -644,7 +667,7 @@ bool PlayerManager::registerPlayer(const string& username, const string& passwor
     // 添加新玩家到文件
     ofstream outFile(PLAYER_DATA_FILE, ios::app);
     if(outFile.is_open()){
-        outFile << username << " " << password << " 0" << endl;
+        outFile << username << " " << password << " 0 0 0 0" << endl;
         outFile.close();
         cout << "注册成功！" << endl;
         return true;
@@ -676,6 +699,17 @@ bool PlayerManager::loginPlayer(const string& username, const string& password, 
                     player.setTotalChallengeGames(challengeTotal);
                     player.setSuccessChallengeGames(challengeSuccess);
                     player.setCurrentStage(currentStage);
+                    
+                    // 读取关卡用时记录
+                    string timeRecord;
+                    while(ss >> timeRecord) {
+                        size_t colonPos = timeRecord.find(':');
+                        if(colonPos != string::npos){
+                            int stage = stoi(timeRecord.substr(0, colonPos));
+                            int time = stoi(timeRecord.substr(colonPos + 1));
+                            player.setStageTime(stage, time);
+                        }
+                    }
 
                     cout << "登录成功！" << endl;
                     cout << "--------------------" << endl;
@@ -715,6 +749,12 @@ void PlayerManager::updatePlayerData(const Player& player){
                        " " + to_string(player.getTotalChallengeGames()) +
                        " " + to_string(player.getSuccessChallengeGames()) +
                        " " + to_string(player.getCurrentStage());
+                
+                for(int stage = 1; stage <= 8; stage++){
+                    if(player.hasStageTimeRecord(stage)){
+                        line += " " + to_string(stage) + ":" + to_string(player.getStageTime(stage));
+                    }
+                }
             }
             lines.push_back(line);
         }
@@ -844,7 +884,7 @@ void LeaderboardManager::updateStageLeaderboard(const Player& player){
          });
     
     // 写回文件
-    ofstream outFile(CHALLENGE_LEADERBOARD_FILE);
+    ofstream outFile(STAGE_LEADERBOARD_FILE);
     if(outFile.is_open()){
         for(const auto& p : players){
             outFile << get<0>(p) << " " << get<1>(p) << endl;
@@ -887,6 +927,96 @@ void LeaderboardManager::displayStageLeaderboard(){
     else{
         cout << "无法打开排行榜文件。" << endl;
     }
+}
+
+void LeaderboardManager::updateStageTimeLeaderboard(const Player& player, int stage, int timeSeconds){
+    vector<tuple<string, int>> players;
+    bool playerFound = false;
+    
+    string filename = LEVEL_TIME_FILE + to_string(stage) + ".txt";
+    
+    ifstream inFile(filename);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int time;
+            ss >> name >> time;
+            
+            if(name == player.getUsername()){ 
+                playerFound = true;
+                // 如果已有记录且新时间更短，则更新
+                if(timeSeconds < time){ players.push_back({name, timeSeconds}); } 
+                else{ players.push_back({name, time}); }
+            } 
+            else { players.push_back({name, time}); }
+        }
+        inFile.close();
+    }
+    
+    // 如果玩家不在排行榜中，添加新记录
+    if(!playerFound){ players.push_back({player.getUsername(), timeSeconds}); }
+    
+    // 按用时升序排序（用时越短越好）
+    sort(players.begin(), players.end(), 
+         [](const auto& a, const auto& b){
+             return get<1>(a) < get<1>(b);
+         });
+    
+    // 写回文件
+    ofstream outFile(filename);
+    if(outFile.is_open()){
+        for(const auto& p : players) {
+            outFile << get<0>(p) << " " << get<1>(p) << endl;
+        }
+        outFile.close();
+    } 
+    else{ cout << "无法打开排行榜文件，保存失败" << endl; }
+}
+
+void LeaderboardManager::displayStageTimeLeaderboard(int stage){
+    vector<tuple<string, int>> players;
+    
+    string filename = LEVEL_TIME_FILE + to_string(stage) + ".txt";
+    
+    ifstream inFile(filename);
+    if(inFile.is_open()){
+        string line;
+        while(getline(inFile, line)){
+            stringstream ss(line);
+            string name;
+            int time;
+            ss >> name >> time;
+            
+            players.push_back({name, time});
+        }
+        inFile.close();
+        
+        cout << "\n===== 第" << stage << "关用时排行榜 =====" << endl;
+        cout << "排名\t用户名\t用时(秒)" << endl;
+        
+        for(size_t i = 0; i < players.size(); ++i){
+            cout << i + 1 << "\t" 
+                 << get<0>(players[i]) << "\t" 
+                 << get<1>(players[i]) << endl;
+        }
+        
+        if(players.empty()){ cout << "暂无玩家数据" << endl; }
+    } 
+    else{ cout << "暂无该关卡的排行榜数据。" << endl; }
+}
+
+void LeaderboardManager::displayStageTimeLeaderboardMenu(){
+    int stageChoice;
+    cout << "\n请选择要查看的关卡用时排行榜（1-8）：";
+    cin >> stageChoice;
+    cin.ignore();
+    
+    if(stageChoice >= 1 && stageChoice <= 8){
+        displayStageTimeLeaderboard(stageChoice);
+    } 
+    else{ cout << "无效的关卡选择。" << endl; }
 }
 
 void ChallengeMode::playChallengeMode(Player& player){
@@ -947,14 +1077,30 @@ void StageMode::playStageMode(Player& player){
     GameInitializer initializer(stageChoice, player);
     // 执行游戏
     bool result = initializer.getBaseGameModeEngine().startBaseGameMode(initializer);
+    // 获取闯关用时
+    int timeCost = initializer.getBaseGameModeEngine().getTimeCost().count();
 
     // 显示玩家游戏结果
-    if(result){ cout << "闯关成功！" << endl;}
+    if(result){ 
+        cout << "闯关成功！" << endl;
+        cout << "本次用时: " << timeCost << " 秒" << endl;
+        
+        // 如果通过新关卡，更新当前关卡进度
+        if(stageChoice > player.getCurrentStage()){
+            player.setCurrentStage(stageChoice);
+        }
+        
+        // 更新用时记录
+        player.setStageTime(stageChoice, timeCost);
+        
+        // 更新排行榜
+        LeaderboardManager::updateStageTimeLeaderboard(player, stageChoice, timeCost);
+    }
     else{ cout << "闯关失败!" << endl; }
 
     // 更新玩家数据
     PlayerManager::updatePlayerData(player);
-    LeaderboardManager::updateChallengeLeaderboard(player);
+    LeaderboardManager::updateStageLeaderboard(player);
 }
 
 void GameRunner::runGame(){
@@ -1089,7 +1235,22 @@ void GameRunner::runGame(){
                                 break;
                             case 2:
                                 invalidChoice = false;
-                                LeaderboardManager::displayStageLeaderboard();
+                                // 闯关模式排行榜子菜单
+                                int stageLeaderboardChoice;
+                                cout << "\n选择要查看的闯关排行榜类型：" << endl;
+                                cout << "1. 闯关数排行榜" << endl;
+                                cout << "2. 闯关用时排行榜" << endl;
+                                cout << "请选择: ";
+                                cin >> stageLeaderboardChoice;
+                                cin.ignore();
+                                
+                                if(stageLeaderboardChoice == 1){
+                                    LeaderboardManager::displayStageLeaderboard();
+                                } 
+                                else if(stageLeaderboardChoice == 2){
+                                    LeaderboardManager::displayStageTimeLeaderboardMenu();
+                                } 
+                                else { cout << "无效选择" << endl; }
                                 break;
                             default:
                                 cout << "无效选择，请重新选择。" << endl;

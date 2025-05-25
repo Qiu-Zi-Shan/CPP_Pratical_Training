@@ -14,6 +14,7 @@
 #include <tuple>
 #include <ctime>
 #include <cmath>
+#include <map>
 using namespace std;
 
 // 轨迹点结构体
@@ -51,6 +52,7 @@ private:
     int challengeScore, challengeGames, challengeSuccessGames; 
     int currentStage;
     PlayerRank rank;
+    map<int, int> stageTimeRecords; 
 
 public:
     Player();
@@ -78,6 +80,9 @@ public:
     // 闯关模式相关
     void setCurrentStage(int stage);
     int getCurrentStage() const;
+    void setStageTime(int stage, int timeSeconds);
+    int getStageTime(int stage) const;
+    bool hasStageTimeRecord(int stage) const;
 };
 
 class TimeEngine{
@@ -85,12 +90,14 @@ public:
     TimeEngine();
     void start();
     void end();
-    chrono::time_point<chrono::steady_clock> getStartTime() const;
-    chrono::time_point<chrono::steady_clock> getEndTime() const;
+    chrono::seconds getTimeCost();
     void displayTimeCost();
+
 private:
     chrono::time_point<chrono::steady_clock> startTime;
     chrono::time_point<chrono::steady_clock> endTime;
+    chrono::time_point<chrono::steady_clock> getStartTime() const;
+    chrono::time_point<chrono::steady_clock> getEndTime() const;
 };    
 
 class GameInitializer; //由于AbstractBaseGmaeMode相关类中需要使用GameInitializer类，所以需要先声明
@@ -105,6 +112,7 @@ public:
     virtual void displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const = 0;
     virtual void timeStart() = 0;
     virtual void timeEnd() = 0;
+    virtual chrono::seconds getTimeCost() = 0;
     virtual void displayTimeCost() = 0;
     virtual bool playBaseGameMode(GameInitializer& initializer);
 };
@@ -122,6 +130,7 @@ private:
     bool processPlayerInput(vector<TrajectoryPoint>& playerTrajectory, GameInitializer& initializer);
     void timeStart();
     void timeEnd();
+    chrono::seconds getTimeCost();
     void displayTimeCost();
 };
 
@@ -138,6 +147,7 @@ private:
     bool processPlayerInput(vector<TrajectoryPoint>& playerTrajectory, GameInitializer& initializer);
     void timeStart();
     void timeEnd();
+    chrono::seconds getTimeCost();
     void displayTimeCost();
 };
 
@@ -158,6 +168,7 @@ private:
     void displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const;
     void timeStart();
     void timeEnd();
+    chrono::seconds getTimeCost();
     void displayTimeCost();
 };
 
@@ -168,6 +179,7 @@ public:
     ~BaseGameModeEngine();
 
     int getBaseGameMode();
+    chrono::seconds getTimeCost();
     bool startBaseGameMode(GameInitializer& initializer); // 开始基础游戏形式
 
 private:
@@ -250,6 +262,9 @@ public:
 
     static void updateStageLeaderboard(const Player& player);
     static void displayStageLeaderboard();
+    static void updateStageTimeLeaderboard(const Player& player, int stage, int timeSeconds);
+    static void displayStageTimeLeaderboard(int stage);
+    static void displayStageTimeLeaderboardMenu();
 };
 
 // 挑战模式类
