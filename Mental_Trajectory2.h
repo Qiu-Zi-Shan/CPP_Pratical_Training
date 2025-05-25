@@ -17,6 +17,9 @@
 #include <map>
 #include <conio.h>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 using namespace std;
 
 // 轨迹点结构体
@@ -127,7 +130,6 @@ public:
     virtual bool playBaseGameMode(GameInitializer& initializer);
     virtual void pauseGame() = 0;  
     virtual void resumeGame() = 0;  
-    virtual bool isGamePaused() const = 0; 
 };
 
 class BaseGameMode1 : public AbstractBaseGameMode{
@@ -147,7 +149,6 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
-    bool isGamePaused() const;
 };
 
 class BaseGameMode2 : public AbstractBaseGameMode{
@@ -167,7 +168,6 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
-    bool isGamePaused() const;
 };
 
 class BaseGameMode3 : public AbstractBaseGameMode{
@@ -191,7 +191,6 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
-    bool isGamePaused() const;
 };
 
 class BaseGameModeEngine{
@@ -307,6 +306,7 @@ class GameRunner{
 public:
     static void runGame();
 };
+
 
 
 
