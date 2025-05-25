@@ -114,41 +114,16 @@ void TimeEngine::displayTimeCost(){
     cout << "\n您花费了 " << getTimeCost().count() << " 秒完成答题。" << endl;
 }
 
-bool TimeEngine::handlePauseInput(){
-    if(_kbhit()){
-        char key = _getch();
-        if(key == 'p' || key == 'P'){
-            if(!isPaused){
-                pause();
-                cout << "\n游戏已暂停！按 'R' 键继续游戏" << endl;
-                
-                // 等待继续游戏
-                bool resumed = false;
-                while(!resumed){
-                    if(_kbhit()){
-                        char resumeKey = _getch();
-                        if(resumeKey == 'r' || resumeKey == 'R'){
-                            resume();
-                            cout << "\n游戏继续..." << endl;
-                            resumed = true;
-                        }
-                    }
-                }
-                return true; // 已处理暂停/继续
-            }
-        }
-    }
-    return false; // 没有检测到暂停/继续按键
-}
-
 bool AbstractBaseGameMode::playBaseGameMode(GameInitializer& initializer){
     vector<TrajectoryPoint> playerAnswer;
     timeStart();
     displayBaseModeInfo(initializer);
     displayGridInfo(initializer);
-    cout << "\n游戏提示：您可以按 'P' 键暂停游戏，暂停后按 'R' 键继续" << endl; 
+    cout << "\n游戏提示：输入 'p' 可随时暂停/继续游戏" << endl; 
+    
     // 处理玩家输入
     bool correct = processPlayerInput(playerAnswer, initializer);
+    
     timeEnd();
     displayTimeCost();
     displayResult(correct, playerAnswer, initializer);
@@ -170,6 +145,9 @@ void BaseGameMode1::displayGridInfo(GameInitializer& initializer) const{
 bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
     // 清空之前的答案
     playerAnswer.clear();
+    
+    // 只在开始时清空一次输入缓冲区
+    PauseListener::getInstance().flushInputBuffer();
 
     cout << "\n请逐步输入B的实际航迹，共" << initializer.getShipB().getTrajectory().size() << "步" << endl;
     
@@ -177,19 +155,15 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
         cout << "第" << (i+1) << "步 (格式: x,y): ";
         string input;
-        while(true){
-            // 检查暂停按键
-            if(timeEngine.handlePauseInput()){
-                // 如果处理了暂停/继续，重新提示输入
-                cout << "第" << (i+1) << "步 (格式: x,y): ";
-                continue;
-            }
-            
-            // 获取正常输入
-            if(_kbhit()){
-                getline(cin, input);
-                break;
-            }
+        
+        getline(cin, input);
+        
+        // 检查暂停键
+        if(input == "p" || input == "P"){
+            PauseListener::getInstance().triggerPause();
+            i--; // 重新提示当前步骤
+            cout << "第" << (i+1) << "步 (格式: x,y): ";
+            continue;
         }
         
         // 检查作弊码
@@ -197,6 +171,7 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             playerAnswer = initializer.getShipB().getTrajectory();
             break;
         }       
+        
         // 解析输入
         size_t comma = input.find(',');
         if(comma != string::npos){
@@ -217,6 +192,7 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             continue;
         }
     } 
+    
     // 验证答案
     for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
         if(playerAnswer[i].x != initializer.getShipB().getTrajectory()[i].x || 
@@ -271,6 +247,9 @@ void BaseGameMode2::displayGridInfo(GameInitializer& initializer) const{
 bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
     // 清空之前的答案
     playerAnswer.clear();
+    
+    // 只在开始时清空一次输入缓冲区
+    PauseListener::getInstance().flushInputBuffer();
 
     cout << "\n请输入B的相对航迹，共" << initializer.getRelativeB().size() << "步" << endl;
     
@@ -278,19 +257,15 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
         cout << "第" << (i+1) << "步 (格式: x,y): ";
         string input;
-        while(true){
-            // 检查暂停按键
-            if(timeEngine.handlePauseInput()){
-                // 如果处理了暂停/继续，重新提示输入
-                cout << "第" << (i+1) << "步 (格式: x,y): ";
-                continue;
-            }
-            
-            // 获取正常输入
-            if(_kbhit()){
-                getline(cin, input);
-                break;
-            }
+        
+        getline(cin, input);
+        
+        // 检查暂停键
+        if(input == "p" || input == "P"){
+            PauseListener::getInstance().triggerPause();
+            i--; // 重新提示当前步骤
+            cout << "第" << (i+1) << "步 (格式: x,y): ";
+            continue;
         }
         
         // 检查作弊码
@@ -319,6 +294,7 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             continue;
         }
     }
+    
     // 验证答案
     for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
         if(playerAnswer[i].x != initializer.getRelativeB()[i].x || 
@@ -373,34 +349,32 @@ void BaseGameMode3::displayGridInfo(GameInitializer& initializer) const{
 }
 
 bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
+    // 只在开始时清空一次输入缓冲区
+    PauseListener::getInstance().flushInputBuffer();
+    
     cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：" << endl;
     
     string input;
-    while(true){
-        // 检查暂停按键
-        if(timeEngine.handlePauseInput()){
-            // 如果处理了暂停/继续，重新提示输入
-            cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：" << endl;
-            continue;
-        }
-        // 获取正常输入
-        if(_kbhit()){
-            getline(cin, input);
-            break;
-        }        
+    getline(cin, input);
+    
+    // 检查暂停键
+    if(input == "p" || input == "P"){
+        PauseListener::getInstance().triggerPause();
+        // 暂停后重新获取输入
+        return processPlayerInput(playerAnswer, initializer);
     }
 
     // 检查作弊码
     if(input == "999"){
         if(getIsRelative()){
             playerAnswer.push_back(initializer.getRelativeB()[playerAnswer.size()]);
-            return true;
         }
         else{
             playerAnswer.push_back(initializer.getShipB().getTrajectory()[playerAnswer.size()]);
-            return true;
         }
+        return true;
     }
+    
     // 解析输入
     size_t comma = input.find(',');
     if(comma != string::npos){
@@ -418,16 +392,16 @@ bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
         cout << "输入格式错误，请使用正确的格式 (x,y)" << endl;
         return false;
     }
+    
     // 验证答案
     if(getIsRelative()){
-        return(playerAnswer.back().x == initializer.getRelativeB()[playerAnswer.size()].x && 
-               playerAnswer.back().y == initializer.getRelativeB()[playerAnswer.size()].y);
+        return(playerAnswer.back().x == initializer.getRelativeB()[playerAnswer.size()-1].x && 
+               playerAnswer.back().y == initializer.getRelativeB()[playerAnswer.size()-1].y);
     }
     else{
-        return(playerAnswer.back().x == initializer.getShipB().getTrajectory()[playerAnswer.size()].x &&
-               playerAnswer.back().y == initializer.getShipB().getTrajectory()[playerAnswer.size()].y);
+        return(playerAnswer.back().x == initializer.getShipB().getTrajectory()[playerAnswer.size()-1].x &&
+               playerAnswer.back().y == initializer.getShipB().getTrajectory()[playerAnswer.size()-1].y);
     }
-    return true;
 }
 void BaseGameMode3::displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const{
     if(correct){
@@ -450,7 +424,8 @@ bool BaseGameMode3::playBaseGameMode(GameInitializer& initializer){
 
     bool correct = true;
     vector<TrajectoryPoint> playerAnswer;
-    cout << "\n游戏提示：您可以按 'P' 键暂停游戏，暂停后按 'R' 键继续" << endl;
+    cout << "\n游戏提示：输入 'p' 可随时暂停/继续游戏" << endl;
+    
     for(size_t step = 1; step < initializer.getShipA().getTrajectory().size() && correct; ++step){
         // 随机决定这一步是猜实际航迹还是相对航迹
         setIsRelative();
@@ -544,9 +519,14 @@ bool BaseGameModeEngine::startBaseGameMode(GameInitializer& initializer){
     // 显示游戏信息
     cout << "网格大小: " << initializer.getGridSize() << "x" << initializer.getGridSize() << endl;
     cout << "航迹步数: " << initializer.getSteps() << endl;
+    cout << "\n======= 重要提示 =======" << endl;
+    cout << "您可以随时输入 'p/P' 暂停游戏" << endl;
+    cout << "暂停后再次输入 'p/P' 继续游戏" << endl;
+    cout << "暂停期间计时会自动停止" << endl;
+    cout << "=========================" << endl;
 
     // 执行游戏
-    return getCurrentBaseMode() -> playBaseGameMode(initializer);
+    return getCurrentBaseMode()->playBaseGameMode(initializer);
 }
 
 GameInitializer::GameInitializer(Player& player)
@@ -1243,6 +1223,9 @@ void GameRunner::runGame(){
     // 用当前时间作为随机数种子
     srand(static_cast<unsigned int>(time(0)));
 
+    // 启动暂停监听
+    PauseListener::getInstance().start();
+
     // 玩家登录/注册
     Player currentPlayer;
     bool continueGame = true;
@@ -1410,6 +1393,90 @@ void GameRunner::runGame(){
                     break;
                 default:
                     cout << "无效选择，请重新选择。" << endl;
+            }
+        }
+    }
+
+    // 停止暂停监听
+    PauseListener::getInstance().stop();
+}
+
+// 实现PauseListener类
+PauseListener::PauseListener() : isRunning(false), isPaused(false), timeEngine(){}
+
+PauseListener::~PauseListener(){ 
+    stop();
+}
+
+void PauseListener::start(){
+    if (isRunning) return;
+    
+    // 清空启动时可能存在的输入缓冲区
+    flushInputBuffer();
+    
+    isRunning = true;
+    isPaused = false;
+}
+
+void PauseListener::stop(){
+    isRunning = false;
+    
+    // 确保没有线程被卡在等待中
+    isPaused = false;
+    {
+        std::unique_lock<std::mutex> lock(pauseMutex);
+        pauseCV.notify_all();
+    }
+}
+
+// 简化waitIfPaused方法，因为现在主要通过直接输入处理暂停
+void PauseListener::waitIfPaused(){
+    // 首先快速检查是否暂停，避免不必要的锁操作
+    if(!isPaused) return;
+    
+    // 如果确实暂停了，使用条件变量等待
+    std::unique_lock<std::mutex> lock(pauseMutex);
+    pauseCV.wait(lock, [this]{ return !isPaused; });
+}
+
+// 优化flushInputBuffer方法，避免过度清空
+void PauseListener::flushInputBuffer(){
+    while(_kbhit()){
+        _getch();
+    }
+}
+
+PauseListener& PauseListener::getInstance(){
+    static PauseListener instance;
+    return instance;
+}
+
+// 简化triggerPause方法，使其更直接和高效
+void PauseListener::triggerPause(){
+    bool wasPaused = isPaused.exchange(!isPaused);
+    
+    if(!wasPaused){ // 现在是暂停状态
+        cout << "\n游戏已暂停！按 'P' 键继续游戏" << endl;
+        timeEngine.pause();
+        
+        // 等待玩家输入P继续游戏
+        string input;
+        bool resumed = false;
+        while(!resumed){
+            getline(cin, input);
+            if(input == "p" || input == "P"){
+                isPaused = false;
+                timeEngine.resume();
+                cout << "\n游戏继续..." << endl;
+                
+                // 通知所有等待的线程
+                std::unique_lock<std::mutex> lock(pauseMutex);
+                pauseCV.notify_all();
+                
+                resumed = true;
+            }
+            else{
+                cout << "游戏仍处于暂停状态，请按 'P' 键继续游戏" << endl;
             }
         }
     }

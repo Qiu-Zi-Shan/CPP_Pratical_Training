@@ -17,6 +17,9 @@
 #include <map>
 #include <conio.h>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 using namespace std;
 
 // 轨迹点结构体
@@ -127,7 +130,8 @@ public:
     virtual bool playBaseGameMode(GameInitializer& initializer);
     virtual void pauseGame() = 0;  
     virtual void resumeGame() = 0;  
-    virtual bool isGamePaused() const = 0; 
+    virtual bool isGamePaused() const = 0;
+    static bool handleGlobalPauseInput(AbstractBaseGameMode* gameMode);
 };
 
 class BaseGameMode1 : public AbstractBaseGameMode{
@@ -306,6 +310,28 @@ public:
 class GameRunner{
 public:
     static void runGame();
+};
+
+// 全局暂停监听类
+class PauseListener{
+private:
+    bool isRunning;
+    std::atomic<bool> isPaused; // 使用原子变量
+    std::mutex pauseMutex;
+    std::condition_variable pauseCV;
+    TimeEngine timeEngine; // 添加计时器引用
+
+public:
+    PauseListener();
+    ~PauseListener();
+    
+    void start();
+    void stop();
+    bool checkPaused() { return isPaused; } // 内联实现简化方法
+    void waitIfPaused();
+    void flushInputBuffer();
+    void triggerPause();
+    static PauseListener& getInstance();
 };
 
 
