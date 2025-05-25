@@ -15,6 +15,8 @@
 #include <ctime>
 #include <cmath>
 #include <map>
+#include <conio.h>
+#include <thread>
 using namespace std;
 
 // 轨迹点结构体
@@ -90,14 +92,22 @@ public:
     TimeEngine();
     void start();
     void end();
+    void pause(); // 暂停计时
+    void resume(); // 恢复计时
+    bool getIsPaused() const; 
     chrono::seconds getTimeCost();
     void displayTimeCost();
+    bool handlePauseInput(); // 处理暂停/继续的按键输入，返回true表示检测到了暂停/继续按键
 
 private:
     chrono::time_point<chrono::steady_clock> startTime;
     chrono::time_point<chrono::steady_clock> endTime;
+    chrono::time_point<chrono::steady_clock> pauseStartTime; 
+    chrono::duration<double> pausedDuration; 
+    bool isPaused; 
     chrono::time_point<chrono::steady_clock> getStartTime() const;
     chrono::time_point<chrono::steady_clock> getEndTime() const;
+    chrono::duration<double> getPausedDuration() const;
 };    
 
 class GameInitializer; //由于AbstractBaseGmaeMode相关类中需要使用GameInitializer类，所以需要先声明
@@ -115,6 +125,9 @@ public:
     virtual chrono::seconds getTimeCost() = 0;
     virtual void displayTimeCost() = 0;
     virtual bool playBaseGameMode(GameInitializer& initializer);
+    virtual void pauseGame() = 0;  
+    virtual void resumeGame() = 0;  
+    virtual bool isGamePaused() const = 0; 
 };
 
 class BaseGameMode1 : public AbstractBaseGameMode{
@@ -132,6 +145,9 @@ private:
     void timeEnd();
     chrono::seconds getTimeCost();
     void displayTimeCost();
+    void pauseGame();
+    void resumeGame();
+    bool isGamePaused() const;
 };
 
 class BaseGameMode2 : public AbstractBaseGameMode{
@@ -149,6 +165,9 @@ private:
     void timeEnd();
     chrono::seconds getTimeCost();
     void displayTimeCost();
+    void pauseGame();
+    void resumeGame();
+    bool isGamePaused() const;
 };
 
 class BaseGameMode3 : public AbstractBaseGameMode{
@@ -170,6 +189,9 @@ private:
     void timeEnd();
     chrono::seconds getTimeCost();
     void displayTimeCost();
+    void pauseGame();
+    void resumeGame();
+    bool isGamePaused() const;
 };
 
 class BaseGameModeEngine{

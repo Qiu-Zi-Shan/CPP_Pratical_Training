@@ -75,21 +75,70 @@ bool Player::hasStageTimeRecord(int stage) const{
     return stageTimeRecords.find(stage) != stageTimeRecords.end();
 }
 
-TimeEngine::TimeEngine() : startTime(), endTime(){}
+TimeEngine::TimeEngine() : startTime(), endTime(), pausedDuration(chrono::seconds(0)), isPaused(false) {}
 
 void TimeEngine::start(){
     startTime = chrono::steady_clock::now();
+    pausedDuration = chrono::seconds(0);
+    isPaused = false;
+    pauseStartTime = chrono::steady_clock::now(); 
 }
 void TimeEngine::end(){
     endTime = chrono::steady_clock::now();
 }
+void TimeEngine::pause(){
+    if(!isPaused){
+        pauseStartTime = chrono::steady_clock::now();
+        isPaused = true;
+    }
+}
+void TimeEngine::resume(){
+    if(isPaused){
+        auto pauseEndTime = chrono::steady_clock::now();
+        pausedDuration += (pauseEndTime - pauseStartTime);
+        isPaused = false;
+    }
+}
+bool TimeEngine::getIsPaused() const{
+    return isPaused;
+}
+
 chrono::time_point<chrono::steady_clock> TimeEngine::getStartTime() const{ return startTime; }
 chrono::time_point<chrono::steady_clock> TimeEngine::getEndTime() const{ return endTime; }
+chrono::duration<double> TimeEngine::getPausedDuration() const{ return pausedDuration; }
 chrono::seconds TimeEngine::getTimeCost(){ 
-    return chrono::duration_cast<chrono::seconds>(getEndTime() - getStartTime()); 
+    return chrono::duration_cast<chrono::seconds>(getEndTime() - getStartTime() - getPausedDuration()); 
 }
+
 void TimeEngine::displayTimeCost(){
     cout << "\n您花费了 " << getTimeCost().count() << " 秒完成答题。" << endl;
+}
+
+bool TimeEngine::handlePauseInput(){
+    if(_kbhit()){
+        char key = _getch();
+        if(key == 'p' || key == 'P'){
+            if(!isPaused){
+                pause();
+                cout << "\n游戏已暂停！按 'R' 键继续游戏" << endl;
+                
+                // 等待继续游戏
+                bool resumed = false;
+                while(!resumed){
+                    if(_kbhit()){
+                        char resumeKey = _getch();
+                        if(resumeKey == 'r' || resumeKey == 'R'){
+                            resume();
+                            cout << "\n游戏继续..." << endl;
+                            resumed = true;
+                        }
+                    }
+                }
+                return true; // 已处理暂停/继续
+            }
+        }
+    }
+    return false; // 没有检测到暂停/继续按键
 }
 
 bool AbstractBaseGameMode::playBaseGameMode(GameInitializer& initializer){
@@ -97,10 +146,12 @@ bool AbstractBaseGameMode::playBaseGameMode(GameInitializer& initializer){
     timeStart();
     displayBaseModeInfo(initializer);
     displayGridInfo(initializer);
+    cout << "\n游戏提示：您可以按 'P' 键暂停游戏，暂停后按 'R' 键继续" << endl; 
+    // 处理玩家输入
     bool correct = processPlayerInput(playerAnswer, initializer);
     timeEnd();
     displayTimeCost();
-    displayResult (correct, playerAnswer, initializer);
+    displayResult(correct, playerAnswer, initializer);
     return correct;
 }
 
@@ -117,41 +168,63 @@ void BaseGameMode1::displayGridInfo(GameInitializer& initializer) const{
 }
 
 bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
-    // 获取玩家答案
-    cout << "\n请输入B的实际航迹（格式：x1,y1 x2,y2 ...）：" << endl;
-    string input;
-    getline(cin, input);
+    // 清空之前的答案
+    playerAnswer.clear();
 
-    // 检查作弊码
-    if(input == "999"){
-        playerAnswer = initializer.getShipB().getTrajectory();
-        return true;
-    }
-
-    // 解析输入
-    stringstream ss(input);
-    string point;
-    while(ss >> point){
-        size_t comma = point.find(',');
-        int x = stoi(point.substr(0, comma));
-        int y = stoi(point.substr(comma+1));
-        playerAnswer.emplace_back(x, y);
-    }
-
-    // 验证答案
-    bool correct = true;
-    if(playerAnswer.size() != initializer.getShipB().getTrajectory().size()){
-        correct = false;
-    } 
-    else{
-        for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
-            if(playerAnswer[i].x != initializer.getShipB().getTrajectory()[i].x || playerAnswer[i].y != initializer.getShipB().getTrajectory()[i].y){
-                correct = false;
+    cout << "\n请逐步输入B的实际航迹，共" << initializer.getShipB().getTrajectory().size() << "步" << endl;
+    
+    // 逐步获取玩家输入
+    for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
+        cout << "第" << (i+1) << "步 (格式: x,y): ";
+        string input;
+        while(true){
+            // 检查暂停按键
+            if(timeEngine.handlePauseInput()){
+                // 如果处理了暂停/继续，重新提示输入
+                cout << "第" << (i+1) << "步 (格式: x,y): ";
+                continue;
+            }
+            
+            // 获取正常输入
+            if(_kbhit()){
+                getline(cin, input);
                 break;
             }
         }
+        
+        // 检查作弊码
+        if(input == "999"){
+            playerAnswer = initializer.getShipB().getTrajectory();
+            break;
+        }       
+        // 解析输入
+        size_t comma = input.find(',');
+        if(comma != string::npos){
+            try{
+                int x = stoi(input.substr(0, comma));
+                int y = stoi(input.substr(comma+1));
+                playerAnswer.emplace_back(x, y);
+            } 
+            catch(const exception& e){
+                cout << "输入格式错误，请重新输入此步骤" << endl;
+                i--;
+                continue;
+            }
+        } 
+        else{
+            cout << "输入格式错误，请重新输入此步骤" << endl;
+            i--;
+            continue;
+        }
+    } 
+    // 验证答案
+    for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
+        if(playerAnswer[i].x != initializer.getShipB().getTrajectory()[i].x || 
+           playerAnswer[i].y != initializer.getShipB().getTrajectory()[i].y){
+            return false;
+        }
     }
-    return correct;
+    return true;
 }
 void BaseGameMode1::displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const{
     if(correct){
@@ -179,6 +252,10 @@ void BaseGameMode1::timeEnd(){ timeEngine.end(); }
 chrono::seconds BaseGameMode1::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode1::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
+void BaseGameMode1::pauseGame(){ timeEngine.pause(); }
+void BaseGameMode1::resumeGame(){ timeEngine.resume(); }
+bool BaseGameMode1::isGamePaused() const{ return timeEngine.getIsPaused(); }
+
 BaseGameMode2::BaseGameMode2() : timeEngine(){}
 
 void BaseGameMode2::displayBaseModeInfo(GameInitializer& initializer) const{ 
@@ -192,39 +269,63 @@ void BaseGameMode2::displayGridInfo(GameInitializer& initializer) const{
 }
 
 bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
-    // 获取玩家答案
-    cout << "\n请输入B的相对航迹（格式：x1,y1 x2,y2 ...）：" << endl;
-    string input;
-    getline(cin, input);
+    // 清空之前的答案
+    playerAnswer.clear();
 
-    // 检查作弊码
-    if(input == "999"){
-        playerAnswer = initializer.getRelativeB();
-        return true;
-    }
-
-    // 原有的输入处理逻辑
-    stringstream ss(input);
-    string point;
-    while(ss >> point){
-        size_t comma = point.find(',');
-        int x = stoi(point.substr(0, comma));
-        int y = stoi(point.substr(comma+1));
-        playerAnswer.emplace_back(x, y);
-    }
-
-    // 验证答案
-    if(playerAnswer.size() != initializer.getRelativeB().size()){
-        return false;
-    } 
-    else{
-        for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
-            if(playerAnswer[i].x != initializer.getRelativeB()[i].x || playerAnswer[i].y != initializer.getRelativeB()[i].y){
-                return false;
+    cout << "\n请输入B的相对航迹，共" << initializer.getRelativeB().size() << "步" << endl;
+    
+    // 逐步获取玩家输入
+    for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
+        cout << "第" << (i+1) << "步 (格式: x,y): ";
+        string input;
+        while(true){
+            // 检查暂停按键
+            if(timeEngine.handlePauseInput()){
+                // 如果处理了暂停/继续，重新提示输入
+                cout << "第" << (i+1) << "步 (格式: x,y): ";
+                continue;
+            }
+            
+            // 获取正常输入
+            if(_kbhit()){
+                getline(cin, input);
                 break;
             }
         }
+        
+        // 检查作弊码
+        if(input == "999"){
+            playerAnswer = initializer.getRelativeB();
+            break;
+        }
+        
+        // 解析输入
+        size_t comma = input.find(',');
+        if(comma != string::npos){
+            try{
+                int x = stoi(input.substr(0, comma));
+                int y = stoi(input.substr(comma+1));
+                playerAnswer.emplace_back(x, y);
+            } 
+            catch(const exception& e){
+                cout << "输入格式错误，请重新输入此步骤" << endl;
+                i--;
+                continue;
+            }
+        } 
+        else{
+            cout << "输入格式错误，请重新输入此步骤" << endl;
+            i--; 
+            continue;
+        }
     }
+    // 验证答案
+    for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
+        if(playerAnswer[i].x != initializer.getRelativeB()[i].x || 
+           playerAnswer[i].y != initializer.getRelativeB()[i].y){
+            return false;
+        }
+    }   
     return true;
 }
 void BaseGameMode2::displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const{
@@ -255,6 +356,10 @@ void BaseGameMode2::timeEnd(){ timeEngine.end(); }
 chrono::seconds BaseGameMode2::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode2::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
+void BaseGameMode2::pauseGame(){ timeEngine.pause(); }
+void BaseGameMode2::resumeGame(){ timeEngine.resume(); }
+bool BaseGameMode2::isGamePaused() const{ return timeEngine.getIsPaused(); }
+
 BaseGameMode3::BaseGameMode3() : timeEngine(), isRelative(false){}
 
 void BaseGameMode3::setIsRelative(){ isRelative = rand() % 2; }
@@ -268,9 +373,22 @@ void BaseGameMode3::displayGridInfo(GameInitializer& initializer) const{
 }
 
 bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
-    cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹（格式：x,y）：" << endl;
+    cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：" << endl;
+    
     string input;
-    getline(cin, input);
+    while(true){
+        // 检查暂停按键
+        if(timeEngine.handlePauseInput()){
+            // 如果处理了暂停/继续，重新提示输入
+            cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：" << endl;
+            continue;
+        }
+        // 获取正常输入
+        if(_kbhit()){
+            getline(cin, input);
+            break;
+        }        
+    }
 
     // 检查作弊码
     if(input == "999"){
@@ -283,21 +401,33 @@ bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             return true;
         }
     }
-
+    // 解析输入
     size_t comma = input.find(',');
-    int x = stoi(input.substr(0, comma));
-    int y = stoi(input.substr(comma+1));
-    playerAnswer.push_back(TrajectoryPoint(x, y));
-    
+    if(comma != string::npos){
+        try{
+            int x = stoi(input.substr(0, comma));
+            int y = stoi(input.substr(comma+1));
+            playerAnswer.push_back(TrajectoryPoint(x, y));
+        } 
+        catch(const exception& e){
+            cout << "输入格式错误，请使用正确的格式 (x,y)" << endl;
+            return false;
+        }
+    } 
+    else{
+        cout << "输入格式错误，请使用正确的格式 (x,y)" << endl;
+        return false;
+    }
+    // 验证答案
     if(getIsRelative()){
-        return(playerAnswer.back().x == initializer.getRelativeB()[playerAnswer.size()-1].x && 
-        playerAnswer.back().y == initializer.getRelativeB()[playerAnswer.size()-1].y);
+        return(playerAnswer.back().x == initializer.getRelativeB()[playerAnswer.size()].x && 
+               playerAnswer.back().y == initializer.getRelativeB()[playerAnswer.size()].y);
     }
     else{
-        return(playerAnswer.back().x == initializer.getShipB().getTrajectory()[playerAnswer.size()-1].x &&
-        playerAnswer.back().y == initializer.getShipB().getTrajectory()[playerAnswer.size()-1].y);
+        return(playerAnswer.back().x == initializer.getShipB().getTrajectory()[playerAnswer.size()].x &&
+               playerAnswer.back().y == initializer.getShipB().getTrajectory()[playerAnswer.size()].y);
     }
-    return false;
+    return true;
 }
 void BaseGameMode3::displayResult(bool correct, const vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer) const{
     if(correct){
@@ -320,6 +450,7 @@ bool BaseGameMode3::playBaseGameMode(GameInitializer& initializer){
 
     bool correct = true;
     vector<TrajectoryPoint> playerAnswer;
+    cout << "\n游戏提示：您可以按 'P' 键暂停游戏，暂停后按 'R' 键继续" << endl;
     for(size_t step = 1; step < initializer.getShipA().getTrajectory().size() && correct; ++step){
         // 随机决定这一步是猜实际航迹还是相对航迹
         setIsRelative();
@@ -348,6 +479,7 @@ bool BaseGameMode3::playBaseGameMode(GameInitializer& initializer){
             displayGridInfo(initializer);
             GameRenderer::printGrid(currentA, currentB, initializer, false);
         }
+        
         // 处理玩家输入
         correct = processPlayerInput(playerAnswer, initializer);
 
@@ -367,6 +499,10 @@ void BaseGameMode3::timeStart(){ timeEngine.start(); }
 void BaseGameMode3::timeEnd(){ timeEngine.end(); }
 chrono::seconds BaseGameMode3::getTimeCost(){ return timeEngine.getTimeCost(); }
 void BaseGameMode3::displayTimeCost(){ timeEngine.displayTimeCost(); }
+
+void BaseGameMode3::pauseGame(){ timeEngine.pause(); }
+void BaseGameMode3::resumeGame(){ timeEngine.resume(); }
+bool BaseGameMode3::isGamePaused() const{ return timeEngine.getIsPaused(); }
 
 BaseGameModeEngine::BaseGameModeEngine(){
     randomSetBaseGameMode();
@@ -456,11 +592,11 @@ void GameInitializer::generateChallengeSteps(){
 }
 void GameInitializer::calculateChallengeDifficulty(){
     if(baseGameModeEngine.getBaseGameMode() == 0 || baseGameModeEngine.getBaseGameMode() == 1){
-        difficulty = ceil((steps - 4) / 2);
+        difficulty = ceil((double)(steps - 4) / 2);
     }
     else if(baseGameModeEngine.getBaseGameMode() == 2){
-        if(steps <= 9) { difficulty = ceil((steps - 3) / 2); }
-        else if(steps <= 12) { difficulty = ceil((steps - 2) / 2); }
+        if(steps <= 9) { difficulty = ceil((double)(steps - 3) / 2); }
+        else if(steps <= 12) { difficulty = ceil((double)(steps - 2) / 2); }
         else { difficulty = 6; }
     }
 }
@@ -715,7 +851,7 @@ bool PlayerManager::loginPlayer(const string& username, const string& password, 
                     cout << "--------------------" << endl;
                     cout << "挑战模式积分: " << challengeScore << endl;
                     cout << "挑战模式等级: " << player.getChallengeRankName() << endl;
-                    cout << "挑战模式成功率: " << player.getChallengeSuccessRate() << "%" << endl;
+                    cout << "挑战模式成功率: " << player.getChallengeSuccessRate() * 100 << "%" << endl;
                     cout << "闯关模式已闯关卡: " << player.getCurrentStage() << endl;
                     cout << "--------------------" << endl;
                     return true;
@@ -1031,20 +1167,20 @@ void ChallengeMode::playChallengeMode(Player& player){
 
     // 显示玩家游戏结果
     if(result){
-        cout << "恭喜！你获得了 " << 2 * initializer.getPoints() << " 分！" << endl;
+        cout << "你获得了 " << 2 * initializer.getPoints() << " 分！" << endl;
         player.addChallengeScore(2 * initializer.getPoints());
     }
     else{
         if(player.getChallengeScore() > initializer.getPoints()){
-            cout << "很遗憾，你失去了 " << initializer.getPoints() << " 分。" << endl;
+            cout << "你失去了 " << initializer.getPoints() << " 分。" << endl;
             player.reduceChallengeScore(initializer.getPoints());
         } 
         else if(player.getChallengeScore() > 0){
-            cout << "很遗憾，你失去了 " << player.getChallengeScore() << " 分。" << endl;
+            cout << "你失去了 " << player.getChallengeScore() << " 分。" << endl;
             player.setChallengeScore(0);
         } 
         else{
-            cout << "很遗憾，答错了。但你的分数已经为0，不再扣分。" << endl;
+            cout << "你的分数已经为0，不再扣分。" << endl;
         }
     }    
 
@@ -1178,6 +1314,10 @@ void GameRunner::runGame(){
 
             switch(choice){
                 case 1:{
+                    cout << "\n===== 游戏操作说明 =====" << endl;
+                    cout << "- 在游戏过程中，您可以按 'P' 键暂停游戏" << endl;
+                    cout << "- 暂停后，按 'R' 键继续游戏" << endl;
+                    cout << "- 暂停期间计时会停止，不影响您的游戏成绩" << endl;
                     bool invalidChoice = true;
                     while(invalidChoice){ 
                         // 获取玩家选择的游戏模式
