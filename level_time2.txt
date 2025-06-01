@@ -1,1 +1,1 @@
-player1 13
+player1 6
