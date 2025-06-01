@@ -95,9 +95,12 @@ public:
     TimeEngine();
     void start();
     void end();
+    chrono::time_point<chrono::steady_clock> getStartTime() const;
+    chrono::time_point<chrono::steady_clock> getEndTime() const;
+    chrono::duration<double> getPausedDuration() const;
+    bool getIsPaused() const; 
     void pause(); // 暂停计时
     void resume(); // 恢复计时
-    bool getIsPaused() const; 
     chrono::seconds getTimeCost();
     void displayTimeCost();
     bool handlePauseInput(); // 处理暂停/继续的按键输入，返回true表示检测到了暂停/继续按键
@@ -107,16 +110,14 @@ private:
     chrono::time_point<chrono::steady_clock> endTime;
     chrono::time_point<chrono::steady_clock> pauseStartTime; 
     chrono::duration<double> pausedDuration; 
-    bool isPaused; 
-    chrono::time_point<chrono::steady_clock> getStartTime() const;
-    chrono::time_point<chrono::steady_clock> getEndTime() const;
-    chrono::duration<double> getPausedDuration() const;
 };    
 
 class GameInitializer; //由于AbstractBaseGmaeMode相关类中需要使用GameInitializer类，所以需要先声明
 
 // 游戏模式选择
 class AbstractBaseGameMode{
+protected:
+    bool isStageMode = false; // 标记是否为闯关模式
 public:
     virtual ~AbstractBaseGameMode() = default;
     virtual void displayBaseModeInfo(GameInitializer& initializer) const = 0;
@@ -130,6 +131,8 @@ public:
     virtual bool playBaseGameMode(GameInitializer& initializer);
     virtual void pauseGame() = 0;  
     virtual void resumeGame() = 0;  
+    virtual void setIsStageMode(bool isStageMode);
+    virtual bool isTimeExceeded(int timeLimit = 150) const = 0; // 检查是否超时，默认限时150秒 
 };
 
 class BaseGameMode1 : public AbstractBaseGameMode{
@@ -149,6 +152,7 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
+    bool isTimeExceeded(int timeLimit = 150) const;
 };
 
 class BaseGameMode2 : public AbstractBaseGameMode{
@@ -168,6 +172,7 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
+    bool isTimeExceeded(int timeLimit = 150) const;
 };
 
 class BaseGameMode3 : public AbstractBaseGameMode{
@@ -191,6 +196,7 @@ private:
     void displayTimeCost();
     void pauseGame();
     void resumeGame();
+    bool isTimeExceeded(int timeLimit = 150) const;
 };
 
 class BaseGameModeEngine{
@@ -200,6 +206,7 @@ public:
     ~BaseGameModeEngine();
 
     int getBaseGameMode();
+    AbstractBaseGameMode* getCurrentBaseMode();
     chrono::seconds getTimeCost();
     bool startBaseGameMode(GameInitializer& initializer); // 开始基础游戏形式
 
@@ -210,8 +217,6 @@ private:
     void setBaseGameMode(int stageChoice);
     void randomSetBaseGameMode();
     void setCurrentBaseGameMode(); //多态指针游戏形式指向设置
-
-    AbstractBaseGameMode* getCurrentBaseMode();
 };
 
 // 游戏初始化类

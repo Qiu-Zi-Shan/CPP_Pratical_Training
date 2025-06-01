@@ -75,7 +75,7 @@ bool Player::hasStageTimeRecord(int stage) const{
     return stageTimeRecords.find(stage) != stageTimeRecords.end();
 }
 
-TimeEngine::TimeEngine() : startTime(), endTime(), pausedDuration(chrono::seconds(0)), isPaused(false) {}
+TimeEngine::TimeEngine() : startTime(), endTime(), pausedDuration(chrono::seconds(0)) {}
 
 void TimeEngine::start(){
     startTime = chrono::steady_clock::now();
@@ -84,20 +84,11 @@ void TimeEngine::end(){
     endTime = chrono::steady_clock::now();
 }
 void TimeEngine::pause(){
-    if(!isPaused){
-        pauseStartTime = chrono::steady_clock::now();
-        isPaused = true;
-    }
+    pauseStartTime = chrono::steady_clock::now();
 }
 void TimeEngine::resume(){
-    if(isPaused){
-        auto pauseEndTime = chrono::steady_clock::now();
-        pausedDuration += (pauseEndTime - pauseStartTime);
-        isPaused = false;
-    }
-}
-bool TimeEngine::getIsPaused() const{
-    return isPaused;
+    auto pauseEndTime = chrono::steady_clock::now();
+    pausedDuration += (pauseEndTime - pauseStartTime);
 }
 
 chrono::time_point<chrono::steady_clock> TimeEngine::getStartTime() const{ return startTime; }
@@ -126,6 +117,9 @@ bool AbstractBaseGameMode::playBaseGameMode(GameInitializer& initializer){
     displayResult(correct, playerAnswer, initializer);
     return correct;
 }
+void AbstractBaseGameMode::setIsStageMode(bool isStageMode){
+    this->isStageMode = isStageMode;
+}
 
 BaseGameMode1::BaseGameMode1() : timeEngine(){}
 
@@ -147,8 +141,21 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     // 逐步获取玩家输入
     for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
         cout << "第" << (i+1) << "步 (格式: x,y): ";
-        string input;
         
+        // 如果是闯关模式，显示剩余时间
+        if(isStageMode){
+            auto currentTime = chrono::steady_clock::now();
+            auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+                currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+            int remainingTime = 150 - elapsedTime.count();
+            if(remainingTime <= 0){
+                cout << "\n时间已用尽！" << endl;
+                return false;
+            }
+            cout << "[剩余时间: " << remainingTime << "秒] ";
+        }
+        
+        string input;
         getline(cin, input);
  
         // 检查是否有暂停请求
@@ -167,6 +174,12 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             }      
             i--;
             continue;
+        }
+        
+        // 如果是闯关模式，检查是否超时
+        if(isStageMode && isTimeExceeded()){
+            cout << "\n时间已用尽！" << endl;
+            return false;
         }
 
         // 检查作弊码
@@ -233,6 +246,13 @@ void BaseGameMode1::displayTimeCost(){ timeEngine.displayTimeCost(); }
 void BaseGameMode1::pauseGame(){ timeEngine.pause(); }
 void BaseGameMode1::resumeGame(){ timeEngine.resume(); }
 
+bool BaseGameMode1::isTimeExceeded(int timeLimit) const {
+    auto currentTime = chrono::steady_clock::now();
+    auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+        currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+    return elapsedTime.count() > timeLimit;
+}
+
 BaseGameMode2::BaseGameMode2() : timeEngine(){}
 
 void BaseGameMode2::displayBaseModeInfo(GameInitializer& initializer) const{ 
@@ -253,8 +273,21 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     // 逐步获取玩家输入
     for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
         cout << "第" << (i+1) << "步 (格式: x,y): ";
-        string input;
         
+        // 如果是闯关模式，显示剩余时间
+        if(isStageMode){
+            auto currentTime = chrono::steady_clock::now();
+            auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+                currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+            int remainingTime = 150 - elapsedTime.count();
+            if(remainingTime <= 0){
+                cout << "\n时间已用尽！" << endl;
+                return false;
+            }
+            cout << "[剩余时间: " << remainingTime << "秒] ";
+        }
+        
+        string input;
         getline(cin, input);
         
         // 检查是否有暂停请求
@@ -273,6 +306,12 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             } 
             i--;
             continue;
+        }
+        
+        // 如果是闯关模式，检查是否超时
+        if(isStageMode && isTimeExceeded()){
+            cout << "\n时间已用尽！" << endl;
+            return false;
         }
 
         // 检查作弊码
@@ -341,6 +380,13 @@ void BaseGameMode2::displayTimeCost(){ timeEngine.displayTimeCost(); }
 void BaseGameMode2::pauseGame(){ timeEngine.pause(); }
 void BaseGameMode2::resumeGame(){ timeEngine.resume(); }
 
+bool BaseGameMode2::isTimeExceeded(int timeLimit) const {
+    auto currentTime = chrono::steady_clock::now();
+    auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+        currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+    return elapsedTime.count() > timeLimit;
+}
+
 BaseGameMode3::BaseGameMode3() : timeEngine(), isRelative(false){}
 
 void BaseGameMode3::setIsRelative(){ isRelative = rand() % 2; }
@@ -354,7 +400,20 @@ void BaseGameMode3::displayGridInfo(GameInitializer& initializer) const{
 }
 
 bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, GameInitializer& initializer){
-    cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：" << endl;
+    cout << "\n请输入B的" << (getIsRelative() ? "相对" : "实际") << "航迹第" << (playerAnswer.size() + 1) << "步（格式：x,y）：";
+    
+    // 如果是闯关模式，显示剩余时间
+    if(isStageMode){
+        auto currentTime = chrono::steady_clock::now();
+        auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+            currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+        int remainingTime = 150 - elapsedTime.count();
+        if(remainingTime <= 0){
+            cout << "\n时间已用尽！" << endl;
+            return false;
+        }
+        cout << "[剩余时间: " << remainingTime << "秒] ";
+    }
     
     string input;
     getline(cin, input);
@@ -362,7 +421,7 @@ bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     // 检查是否有暂停请求
     if(input == "p" || input == "P"){
         pauseGame();
-        cout << "游戏已暂停，请输入 'p/P' 继续游戏" << endl;   
+        cout << "游戏已暂停，请输入 'p/P' 继续游戏" << endl;        
         // 循环等待直到接收到继续游戏的命令
         while(true){
             getline(cin, input);
@@ -372,8 +431,14 @@ bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
                 break;
             }
             cout << "游戏仍处于暂停状态，请输入 'p/P' 继续游戏" << endl;
-        }
+        }      
         return processPlayerInput(playerAnswer, initializer);
+    }
+    
+    // 如果是闯关模式，检查是否超时
+    if(isStageMode && isTimeExceeded()){
+        cout << "\n时间已用尽！" << endl;
+        return false;
     }
 
     // 检查作弊码
@@ -489,6 +554,13 @@ void BaseGameMode3::displayTimeCost(){ timeEngine.displayTimeCost(); }
 
 void BaseGameMode3::pauseGame(){ timeEngine.pause(); }
 void BaseGameMode3::resumeGame(){ timeEngine.resume(); }
+
+bool BaseGameMode3::isTimeExceeded(int timeLimit) const {
+    auto currentTime = chrono::steady_clock::now();
+    auto elapsedTime = chrono::duration_cast<chrono::seconds>(
+        currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
+    return elapsedTime.count() > timeLimit;
+}
 
 BaseGameModeEngine::BaseGameModeEngine(){
     randomSetBaseGameMode();
@@ -1195,6 +1267,20 @@ void StageMode::playStageMode(Player& player){
     }
     // 初始化游戏
     GameInitializer initializer(stageChoice, player);
+    
+    // 设置为闯关模式（启用时间限制）
+    if(auto mode1 = dynamic_cast<AbstractBaseGameMode*>(initializer.getBaseGameModeEngine().getCurrentBaseMode())){
+        mode1->setIsStageMode(true);
+    } 
+    else if(auto mode2 = dynamic_cast<AbstractBaseGameMode*>(initializer.getBaseGameModeEngine().getCurrentBaseMode())){
+        mode2->setIsStageMode(true);
+    } 
+    else if(auto mode3 = dynamic_cast<AbstractBaseGameMode*>(initializer.getBaseGameModeEngine().getCurrentBaseMode())){
+        mode3->setIsStageMode(true);
+    }
+    
+    cout << "【闯关模式】每个关卡限时150秒，超时将视为挑战失败！" << endl;
+    
     // 执行游戏
     bool result = initializer.getBaseGameModeEngine().startBaseGameMode(initializer);
     // 获取闯关用时
@@ -1202,21 +1288,31 @@ void StageMode::playStageMode(Player& player){
 
     // 显示玩家游戏结果
     if(result){ 
-        cout << "闯关成功！" << endl;
-        cout << "本次用时: " << timeCost << " 秒" << endl;
-        
-        // 如果通过新关卡，更新当前关卡进度
-        if(stageChoice > player.getCurrentStage()){
-            player.setCurrentStage(stageChoice);
+        if(timeCost <= 150){
+            cout << "闯关成功！" << endl;
+            cout << "本次用时: " << timeCost << " 秒" << endl;
+            
+            // 如果通过新关卡，更新当前关卡进度
+            if(stageChoice > player.getCurrentStage()){
+                player.setCurrentStage(stageChoice);
+            }
+            
+            // 更新用时记录
+            player.setStageTime(stageChoice, timeCost);
+            
+            // 更新排行榜
+            LeaderboardManager::updateStageTimeLeaderboard(player, stageChoice, timeCost);
+        } 
+        else{
+            cout << "时间超过150秒限制，闯关失败！" << endl;
         }
-        
-        // 更新用时记录
-        player.setStageTime(stageChoice, timeCost);
-        
-        // 更新排行榜
-        LeaderboardManager::updateStageTimeLeaderboard(player, stageChoice, timeCost);
     }
-    else{ cout << "闯关失败!" << endl; }
+    else{ 
+        cout << "闯关失败!" << endl; 
+        if(timeCost > 150){
+            cout << "超过时间限制(150秒)，请尝试更快完成。" << endl;
+        }
+    }
 
     // 更新玩家数据
     PlayerManager::updatePlayerData(player);
