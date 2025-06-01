@@ -95,12 +95,14 @@ public:
     TimeEngine();
     void start();
     void end();
-    chrono::time_point<chrono::steady_clock> getStartTime() const;
-    chrono::time_point<chrono::steady_clock> getEndTime() const;
-    chrono::duration<double> getPausedDuration() const;
     bool getIsPaused() const; 
     void pause(); // 暂停计时
     void resume(); // 恢复计时
+    void addPausedDuration(chrono::seconds penaltyTime); // 增加暂停时间 (使用提示时调用)
+    void reducePausedDuration(chrono::seconds penaltyTime); // 减少暂停时间 (使用提示时调用)
+    chrono::time_point<chrono::steady_clock> getStartTime() const;
+    chrono::time_point<chrono::steady_clock> getEndTime() const;
+    chrono::duration<double> getPausedDuration() const;
     chrono::seconds getTimeCost();
     void displayTimeCost();
     bool handlePauseInput(); // 处理暂停/继续的按键输入，返回true表示检测到了暂停/继续按键
@@ -118,6 +120,7 @@ class GameInitializer; //由于AbstractBaseGmaeMode相关类中需要使用GameI
 class AbstractBaseGameMode{
 protected:
     bool isStageMode = false; // 标记是否为闯关模式
+    bool hintUsed = false; // 是否已使用提示
 public:
     virtual ~AbstractBaseGameMode() = default;
     virtual void displayBaseModeInfo(GameInitializer& initializer) const = 0;
@@ -132,7 +135,10 @@ public:
     virtual void pauseGame() = 0;  
     virtual void resumeGame() = 0;  
     virtual void setIsStageMode(bool isStageMode);
-    virtual bool isTimeExceeded(int timeLimit = 150) const = 0; // 检查是否超时，默认限时150秒 
+    virtual bool isTimeExceeded(int timeLimit = 150) const = 0; // 检查是否超时，默认限时150秒
+    virtual void useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer) = 0; // 使用提示
+    virtual bool isHintUsed() const { return hintUsed; } // 检查是否已使用提示
+    virtual void applyHintTimePenalty() = 0; // 应用提示时间惩罚
 };
 
 class BaseGameMode1 : public AbstractBaseGameMode{
@@ -153,6 +159,8 @@ private:
     void pauseGame();
     void resumeGame();
     bool isTimeExceeded(int timeLimit = 150) const;
+    void useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer);
+    void applyHintTimePenalty();
 };
 
 class BaseGameMode2 : public AbstractBaseGameMode{
@@ -173,6 +181,8 @@ private:
     void pauseGame();
     void resumeGame();
     bool isTimeExceeded(int timeLimit = 150) const;
+    void useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer);
+    void applyHintTimePenalty();
 };
 
 class BaseGameMode3 : public AbstractBaseGameMode{
@@ -197,6 +207,8 @@ private:
     void pauseGame();
     void resumeGame();
     bool isTimeExceeded(int timeLimit = 150) const;
+    void useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer);
+    void applyHintTimePenalty();
 };
 
 class BaseGameModeEngine{

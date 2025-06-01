@@ -75,7 +75,7 @@ bool Player::hasStageTimeRecord(int stage) const{
     return stageTimeRecords.find(stage) != stageTimeRecords.end();
 }
 
-TimeEngine::TimeEngine() : startTime(), endTime(), pausedDuration(chrono::seconds(0)) {}
+TimeEngine::TimeEngine() : startTime(), endTime(), pausedDuration(chrono::seconds(0)){}
 
 void TimeEngine::start(){
     startTime = chrono::steady_clock::now();
@@ -89,6 +89,10 @@ void TimeEngine::pause(){
 void TimeEngine::resume(){
     auto pauseEndTime = chrono::steady_clock::now();
     pausedDuration += (pauseEndTime - pauseStartTime);
+}
+
+void TimeEngine::reducePausedDuration(chrono::seconds penaltyTime){
+    pausedDuration -= penaltyTime;
 }
 
 chrono::time_point<chrono::steady_clock> TimeEngine::getStartTime() const{ return startTime; }
@@ -137,6 +141,7 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     playerAnswer.clear(); // 清空之前的答案
     
     cout << "\n请逐步输入B的实际航迹，共" << initializer.getShipB().getTrajectory().size() << "步" << endl;
+    cout << "提示：输入'h'或'H'获取提示（每关限用一次，使用后减少15秒时间）" << endl;
     
     // 逐步获取玩家输入
     for(size_t i = 0; i < initializer.getShipB().getTrajectory().size(); i++){
@@ -167,11 +172,24 @@ bool BaseGameMode1::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
                 getline(cin, input);
                 if(input == "p" || input == "P"){
                     resumeGame();
-                    cout << "游戏已继续！" << endl;
+                    cout << "游戏继续..." << endl;
                     break;
                 }
                 cout << "游戏仍处于暂停状态，请输入 'p/P' 继续游戏" << endl;
             }      
+            i--;
+            continue;
+        }
+        
+        // 检查是否请求提示
+        if(input == "h" || input == "H"){
+            // 提供当前步骤的提示
+            if(isStageMode){
+                useHint(initializer, playerAnswer);
+            }   
+            else {
+                cout << "提示功能仅在闯关模式下可用！" << endl;
+            }
             i--;
             continue;
         }
@@ -246,11 +264,46 @@ void BaseGameMode1::displayTimeCost(){ timeEngine.displayTimeCost(); }
 void BaseGameMode1::pauseGame(){ timeEngine.pause(); }
 void BaseGameMode1::resumeGame(){ timeEngine.resume(); }
 
-bool BaseGameMode1::isTimeExceeded(int timeLimit) const {
+bool BaseGameMode1::isTimeExceeded(int timeLimit) const{
     auto currentTime = chrono::steady_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::seconds>(
         currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
     return elapsedTime.count() > timeLimit;
+}
+
+void BaseGameMode1::applyHintTimePenalty(){
+    if(isStageMode && !hintUsed){
+        // 增加虚拟的暂停时间，相当于减少15秒的可用时间
+        auto penaltyTime = chrono::seconds(15);
+        timeEngine.reducePausedDuration(penaltyTime); // 减少暂停时间，相当于减少已用时间
+        hintUsed = true;
+        cout << "已使用提示，剩余时间减少15秒！" << endl;
+    }
+}
+
+void BaseGameMode1::useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer){
+    if(hintUsed){
+        cout << "你已经使用过提示了，每关只能使用一次提示！" << endl;
+        return;
+    }
+    
+    // 获取当前输入步骤
+    size_t currentStep = playerAnswer.size();
+    
+    // 显示当前步骤的提示信息
+    cout << "\n==== 提示信息 ====" << endl; 
+    if(currentStep < initializer.getShipB().getTrajectory().size()){
+        // 提供下一步的提示
+        cout << "B的实际航迹第" << (currentStep + 1) << "步为: (" 
+             << initializer.getShipB().getTrajectory()[currentStep].x << "," 
+             << initializer.getShipB().getTrajectory()[currentStep].y << ")" << endl;
+    } 
+    else{
+        cout << "已经没有更多步骤可以提示了！" << endl;
+        return;
+    }
+    // 应用时间惩罚
+    applyHintTimePenalty();
 }
 
 BaseGameMode2::BaseGameMode2() : timeEngine(){}
@@ -269,6 +322,7 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
     playerAnswer.clear(); // 清空之前的答案
 
     cout << "\n请输入B的相对航迹，共" << initializer.getRelativeB().size() << "步" << endl;
+    cout << "提示：输入'h'或'H'获取提示（每关限用一次，使用后减少15秒时间）" << endl;
     
     // 逐步获取玩家输入
     for(size_t i = 0; i < initializer.getRelativeB().size(); i++){
@@ -304,6 +358,19 @@ bool BaseGameMode2::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
                 }
                 cout << "游戏仍处于暂停状态，请输入 'p/P' 继续游戏" << endl;
             } 
+            i--;
+            continue;
+        }
+        
+        // 检查是否请求提示
+        if(input == "h" || input == "H"){
+            // 提供当前步骤的提示
+            if(isStageMode){
+                useHint(initializer, playerAnswer);
+            }   
+            else{
+                cout << "提示功能仅在闯关模式下可用！" << endl;
+            }
             i--;
             continue;
         }
@@ -387,6 +454,41 @@ bool BaseGameMode2::isTimeExceeded(int timeLimit) const {
     return elapsedTime.count() > timeLimit;
 }
 
+void BaseGameMode2::applyHintTimePenalty(){
+    if(isStageMode && !hintUsed){
+        // 增加虚拟的暂停时间，相当于减少15秒的可用时间
+        auto penaltyTime = chrono::seconds(15);
+        timeEngine.reducePausedDuration(penaltyTime); // 减少暂停时间，相当于减少已用时间
+        hintUsed = true;
+        cout << "已使用提示，剩余时间减少15秒！" << endl;
+    }
+}
+
+void BaseGameMode2::useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer){
+    if(hintUsed){
+        cout << "你已经使用过提示了，每关只能使用一次提示！" << endl;
+        return;
+    }
+    
+    // 获取当前输入步骤
+    size_t currentStep = playerAnswer.size();
+    
+    // 显示当前步骤的提示信息
+    cout << "\n==== 提示信息 ====" << endl; 
+    if (currentStep < initializer.getRelativeB().size()) {
+        // 提供下一步的提示
+        cout << "B的相对航迹第" << (currentStep + 1) << "步为: (" 
+             << initializer.getRelativeB()[currentStep].x << "," 
+             << initializer.getRelativeB()[currentStep].y << ")" << endl;
+    } 
+    else{
+        cout << "已经没有更多步骤可以提示了！" << endl;
+        return;
+    } 
+    // 应用时间惩罚
+    applyHintTimePenalty();
+}
+
 BaseGameMode3::BaseGameMode3() : timeEngine(), isRelative(false){}
 
 void BaseGameMode3::setIsRelative(){ isRelative = rand() % 2; }
@@ -432,6 +534,12 @@ bool BaseGameMode3::processPlayerInput(vector<TrajectoryPoint>& playerAnswer, Ga
             }
             cout << "游戏仍处于暂停状态，请输入 'p/P' 继续游戏" << endl;
         }      
+        return processPlayerInput(playerAnswer, initializer);
+    }
+    
+    // 检查是否请求提示
+    if(input == "h" || input == "H"){
+        useHint(initializer, playerAnswer);
         return processPlayerInput(playerAnswer, initializer);
     }
     
@@ -560,6 +668,55 @@ bool BaseGameMode3::isTimeExceeded(int timeLimit) const {
     auto elapsedTime = chrono::duration_cast<chrono::seconds>(
         currentTime - timeEngine.getStartTime() - timeEngine.getPausedDuration());
     return elapsedTime.count() > timeLimit;
+}
+
+void BaseGameMode3::applyHintTimePenalty(){
+    if(isStageMode && !hintUsed){
+        // 增加虚拟的暂停时间，相当于减少15秒的可用时间
+        auto penaltyTime = chrono::seconds(15);
+        timeEngine.reducePausedDuration(penaltyTime); // 减少暂停时间，相当于减少已用时间
+        hintUsed = true;
+        cout << "已使用提示，剩余时间减少15秒！" << endl;
+    }
+}
+
+void BaseGameMode3::useHint(GameInitializer& initializer, vector<TrajectoryPoint>& playerAnswer){
+    if(hintUsed){
+        cout << "你已经使用过提示了，每关只能使用一次提示！" << endl;
+        return;
+    }
+    
+    // 获取当前输入步骤
+    size_t currentStep = playerAnswer.size();
+    
+    // 显示当前步骤的提示信息
+    cout << "\n==== 提示信息 ====" << endl;
+    
+    if(getIsRelative()){
+        // 如果要猜B的相对航迹
+        if (currentStep < initializer.getRelativeB().size()){
+            cout << "B的相对航迹第" << (currentStep + 1) << "步为: (" 
+                 << initializer.getRelativeB()[currentStep].x << "," 
+                 << initializer.getRelativeB()[currentStep].y << ")" << endl;
+        } 
+        else{
+            cout << "已经没有更多步骤可以提示了！" << endl;
+            return;
+        }
+    } 
+    else{
+        if(currentStep < initializer.getShipB().getTrajectory().size()) {
+            cout << "B的实际航迹第" << (currentStep + 1) << "步为: (" 
+                 << initializer.getShipB().getTrajectory()[currentStep].x << "," 
+                 << initializer.getShipB().getTrajectory()[currentStep].y << ")" << endl;
+        } 
+        else{
+            cout << "已经没有更多步骤可以提示了！" << endl;
+            return;
+        }
+    }
+    // 应用时间惩罚
+    applyHintTimePenalty();
 }
 
 BaseGameModeEngine::BaseGameModeEngine(){
@@ -1280,6 +1437,7 @@ void StageMode::playStageMode(Player& player){
     }
     
     cout << "【闯关模式】每个关卡限时150秒，超时将视为挑战失败！" << endl;
+    cout << "【提示功能】输入'h'或'H'获取提示，每关限用一次，使用后减少15秒时间！" << endl;
     
     // 执行游戏
     bool result = initializer.getBaseGameModeEngine().startBaseGameMode(initializer);
